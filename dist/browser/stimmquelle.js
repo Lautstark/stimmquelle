@@ -602,6 +602,7 @@ function postprocess(wavBytes, o = {}) {
   for (let i = 0; i < out.length; i++) levelled[i] = out[i] * gain;
   return {
     wav: encodeWav(levelled, rate),
+    samples: levelled,
     rate,
     seconds: levelled.length / rate,
     lufs,

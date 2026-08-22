@@ -45,6 +45,15 @@ export interface LevelOptions {
 export interface Levelled {
   /** The finished file, 16 bit PCM, one channel. */
   readonly wav: Uint8Array;
+  /**
+   * The same audio as samples, before the 16 bit quantisation.
+   *
+   * Here because not every consumer wants a WAV: mitreden writes MP3 through
+   * lamejs, and without this it would have to decode its own output back to
+   * feed it — losing the quantisation twice over and doing work it already did.
+   * A consumer that wants WAV ignores it; nothing is copied to produce it.
+   */
+  readonly samples: Float32Array;
   readonly rate: number;
   readonly seconds: number;
   /** What the trimmed recording measured before the gain was applied. */
@@ -439,6 +448,7 @@ export function postprocess(wavBytes: Uint8Array, o: LevelOptions = {}): Levelle
 
   return {
     wav: encodeWav(levelled, rate),
+    samples: levelled,
     rate,
     seconds: levelled.length / rate,
     lufs,
