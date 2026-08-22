@@ -1,11 +1,14 @@
 # stimmquelle
 
-Piper voices for German AAC tools. Two files, and no code yet:
+Speech for German AAC tools: which piper voices may be shipped, which actually
+speak in a browser, and the loudness contract both halves of a talker agree on.
 
 - **[`voices.json`](voices.json)** — which voices may be shipped, which actually
   speak in a browser, and why each rejected one was rejected.
-- **[`CONTRACT.md`](CONTRACT.md)** — the loudness, trimming and fingerprint rules
-  every implementation has to follow, in any language.
+- **[`CONTRACT.md`](CONTRACT.md)** — the loudness, trimming, phoneme and
+  fingerprint rules every implementation has to follow, in any language.
+- **[`src/`](src)** — the implementation the two consumers share, so that the
+  rules above are enforced by something rather than described by something.
 
 Extracted from [mitreden](https://github.com/Lautstark/mitreden) and
 [vorlaut](https://github.com/Lautstark/vorlaut), which had written the same
@@ -19,8 +22,8 @@ below, which belongs in one audited place.
 ## Voices and licensing
 
 > **This repository contains no voice models.** Nothing is checked in here and
-> nothing is downloaded by it. `voices.json` is a list of answers about models
-> that live on Hugging Face.
+> nothing is downloaded by it until a consumer asks for a sentence. `voices.json`
+> is a list of answers about models that live on Hugging Face.
 
 ### The rule this repository exists for
 
@@ -53,6 +56,19 @@ on.
 
 **Running is not shipping**, and the licence question is the easier of the two to
 lose precisely because failing it is silent.
+
+### And it failed again in here, which is why the gate is where it is
+
+The same voice, the same silence, one layer down. When this package learned to
+drive piper itself, `synthesize()` was written checking that an id was *in the
+catalogue* — and not what the catalogue said about it. `speak()` had the whole
+rule; the new door beside it had none, and `en_US-hfc_female-medium` downloaded
+and spoke through it without anything asking.
+
+So the refusal is now one function, [`refuse`](src/catalogue.ts), and every door
+calls it. A rule enforced at one call site is a rule that holds exactly until
+somebody adds a second call site, and adding one is not the kind of change
+anybody reviews for licensing.
 
 ---
 
@@ -101,18 +117,41 @@ module: both Dockerfiles need it, and neither has a language runtime to spare.
 
 ### As it stands
 
+15 voices considered, last read from their sources on **2026-08-22**, against
+`@diffusionstudio/vits-web` 1.0.3.
+
 **Six voices are shippable in a browser** — Thorsten in three flavours,
 `de_DE-mls-medium`, Kristin and LJ Speech. **Eight in a container**, which adds
 Kerstin and John.
 
-**There is no German female voice in a browser.** Not "none in the catalogue" —
-piper publishes three, Kerstin, Eva K and Ramona, and all three are `low` or
-`x_low`. `de_DE-mls-medium` is a 236-speaker corpus with no name a picker can
-show, and it is the closest thing that runs. Reading each model's own
-`phoneme_id_map` instead of vits-web's fixed table would unlock the whole tier,
-Kerstin included — and would mean owning the phonemizer glue rather than calling
-a library. That is the piece of work which decides whether these tools have a
-German female voice.
+**There is still no German female voice in a browser — but the reason has
+narrowed to one thing.** It used to be that nothing could read the older models.
+Now something can, and the harness has reported: driven through
+`usePiperRuntime`, Kerstin speaks. 63 ids, nothing dropped, the ich-Laut landing
+on `ç` at 40 — the form she was actually trained on.
+
+What that turned up is worth more than the fix. **Native piper 1.7.0 is the one
+mispronouncing her.** Her map has no combining mark at all, so native drops it
+and leaves the bare `c` at 16 — a plosive where the ich-Laut belongs, three
+times in one short sentence: *Ik, mökte, nikt.* Both paths phonemise to the same
+33 phonemes and both produce 63 ids, so length was never the difference; the
+sound is, in exactly three positions. She predates the decomposing espeak
+entirely. So this package composes and native does not, the disagreement runs in
+our favour, and it only ever touches a voice native cannot render properly
+anyway — a model whose map holds the mark comes out byte-identical either way.
+That is written into `CONTRACT.md` beside the ffmpeg true-peak entry, for the
+same reason: a deliberate disagreement with a reference implementation gets
+quietly fixed back by the next person unless the evidence sits next to it.
+
+The consequence is what keeps her out. **Native piper cannot arbitrate a voice
+it is mispronouncing** — comparing spectra against native Kerstin compares two
+recordings saying different words, which is why an earlier band comparison
+pointed the wrong way. So `browser_with_own_ids` reads `ok by measurement, not
+yet by ear`, and `browser` stays `quality`. A machine has heard her. A person
+has not, and that is the only thing left that can move it.
+
+`de_DE-mls-medium` is a 236-speaker corpus with no name a picker can show, and it
+remains the closest thing that speaks today.
 
 It would not save much download: `de_DE-kerstin-low` is 63.1 MB against
 `de_DE-thorsten-medium`'s 63.2 MB. Only `x_low` is genuinely smaller. But `low`
@@ -123,9 +162,12 @@ means no resampling at all.
 
 ## What it does
 
-Three things, independent enough to use separately.
+Three things, independent enough to use separately: it speaks a sentence, it
+levels a recording, and it answers questions about a voice.
 
-**Speak a sentence.** piper compiled to WASM, or Azure straight from the tab.
+### Speak a sentence
+
+piper compiled to WASM, or Azure straight from the tab.
 
 ```ts
 import { speak, usePiper, asBlob } from '@lautstark/stimmquelle';
@@ -138,16 +180,73 @@ audio.src = URL.createObjectURL(asBlob(out.wav));
 ```
 
 `speak` **checks the catalogue before it fetches anything.** A voice that may not
-be shipped, or that cannot speak in a browser, or that is not in the list at all,
-throws with the reason. The licensing rule is only worth something if something
-enforces it at the moment a voice is about to be used, rather than in a README.
+be shipped, that owes an attribution this consumer has not claimed to render,
+that cannot speak in a browser, or that is not in the list at all, throws with
+the reason. So does a backend this package does not speak: an id like
+`elevenlabs:…` is refused rather than quietly handed to piper. The licensing rule
+is only worth something if something enforces it at the moment a voice is about
+to be used, rather than in a README.
 
 Azure needs a key, which is passed per call and never stored here — see the
 warning in `CONTRACT.md` §8, because a static site that speaks with Azure has
 given its key to everyone who opens it.
 
-**Level a recording.** Trim the silence, measure to ITU-R BS.1770-4, apply one
-static gain, clamp at the ceiling, write a WAV.
+#### Driving piper directly, for the voices vits-web cannot reach
+
+Opt-in, and the reason it exists is in `CONTRACT.md` §3a. vits-web's `predict()`
+phonemises, remaps and infers in one call and exposes no seam, so there is
+nowhere to correct the one thing that is wrong — it feeds the *phonemizer's*
+symbol ids to a model that was trained against its own, older table. Every `low`
+and `x_low` voice dies of it, and in German that is every female voice piper
+publishes.
+
+```ts
+import { usePiperRuntime, speak } from '@lautstark/stimmquelle';
+
+usePiperRuntime({
+  phonemizer: () => import('./vendor/piper_phonemize.js'),
+  onnx: () => import('./vendor/ort.wasm.js'),
+  wasmBase: '/vendor/',
+});
+```
+
+Configure it and `speak()` takes this route instead; leave it out and nothing
+changes. That opt-in is deliberate — refreshing a vendored copy must not change
+how anything already speaks.
+
+**The invariant that makes adopting it free:** a voice that already speaks comes
+out of this path with *byte-identical phoneme ids*, so the inference input is the
+same and no consumer has to re-render anything. `test/phonemes.test.ts` asserts
+it against fixtures captured from the real phonemizer. Identical *audio* is not
+the test and cannot be — piper is a VITS model with a stochastic duration
+predictor, and three renders of one sentence give three different files.
+
+The fault itself is narrower than "the tables differ": the phonemizer writes the
+ich-Laut decomposed, as `c` followed by U+0327 COMBINING CEDILLA. Newer maps
+carry that combining mark as a symbol of its own at id 140 — outside Kerstin's
+130. Her map has the precomposed `ç` at 40. Both know the sound; only the newer
+spelling was ever asked for. So `remapPhonemeIds` looks each phoneme up exactly
+as emitted and composes it onto the one before **only** where the model has never
+heard of that form.
+
+This path owns the model fetch too, since `predict()` was doing it. Models come
+from the mirror in `voices.json` rather than a `PATH_MAP` that omits five of the
+voices its own catalogue advertises — which brings back `en_US-john-medium`,
+confirmed speaking. It asks the same licence question `speak()` does. It does
+*not* ask the runtime question, because answering that for itself is the entire
+point of it.
+
+**It keeps its own model cache**, in an OPFS directory named
+`stimmquelle-models`. That is *not* where `predict()` kept its copies, so **the
+first sentence in a voice downloads again — 63 MB for a medium model — even for
+a voice already cached by the old path.** It reads as a broken fetch and is not
+one. `forgetModels()` clears this cache; vits-web's own `flush()` clears the
+other, and on a tablet it is worth clearing the one you have stopped using.
+
+### Level a recording
+
+Trim the silence, measure to ITU-R BS.1770-4, apply one static gain, clamp at the
+ceiling, write a WAV.
 
 ```ts
 import { postprocess } from '@lautstark/stimmquelle';
@@ -167,36 +266,54 @@ ceiling −1.5 dBTP, **no compression and no limiter**. A device may add a fade 
 a tail pad — `fadeSec`, `padSec` — which do not change measured loudness and are
 documented extras rather than part of the contract.
 
-**Ask about a voice.** The catalogue, above.
+A sample rate must be a **positive finite number**, and a caller holding one as a
+string parses it first. `postprocess(wav, { rate: '-5%' })` was reachable — it is
+Azure's prosody rate passed where the sample rate goes — and it did not throw. It
+returned a **44 byte WAV**: a valid header with no audio under it, which plays as
+silence and reports nothing. On a talker, that is a key a child presses that
+makes no sound. `'44100'` happened to work by coercion, which is worse than
+either extreme, so the check is on the type as well as the value.
 
-### Driving piper directly
+### Ask about a voice
 
-`usePiperRuntime({ phonemizer, onnx, wasmBase })` makes `speak()` phonemise,
-remap and infer itself instead of calling vits-web's `predict()`. **Opt-in**: a
-consumer that refreshes its vendored copy and calls nothing new gets no change
-in how anything speaks.
-
-It is the only path that can reach a `low` or `x_low` voice, because those need
-ids from the model's own table and `predict()` exposes no seam to put them in.
-It also fetches models from the mirror in `voices.json` rather than vits-web's
-`PATH_MAP`, which brings back `en_US-john-medium` — confirmed speaking.
-
-**It keeps its own model cache**, in an OPFS directory named
-`stimmquelle-models`. That is *not* where `predict()` kept its copies, so **the
-first sentence in a voice downloads again — 63 MB for a medium model — even for
-a voice already cached by the old path.** It reads as a broken fetch and is not
-one. `forgetModels()` clears this cache; vits-web's own `flush()` clears the
-other, and on a tablet it is worth clearing the one you have stopped using.
+The catalogue, above.
 
 ### What it deliberately is not
 
-- **not a storage layer** — no phrases, no collections, no cache, no fingerprints
-  beyond the terms in `CONTRACT.md` §3
+- **not a storage layer** — no phrases, no collections, no cache beyond the
+  models themselves, no fingerprints; `CONTRACT.md` §3 says how a consumer builds
+  one, and `PIPELINE_VERSION` is exported for it
 - **not a key store** — Azure credentials are passed per call
 - **not a promise of identical audio between two runtimes.** piper is a VITS
   model that samples: three renders of one sentence gave three different files.
   What two implementations can agree on is the *level*, and `CONTRACT.md` §7 says
   how closely
+
+## Is the ruler itself right?
+
+Every loudness check that measures output with the same function that decided the
+gain is circular — a wrong BS.1770 satisfies all of them, and did satisfy
+mitreden's whole audio suite until somebody noticed.
+
+[`conformance/calibration.json`](conformance/calibration.json) is the one outside
+opinion this family has left. The numbers came from ffmpeg's `ebur128` reading
+files this code wrote, frozen on the last day any repository here had ffmpeg in
+it; neither consumer can render a reference file any more.
+[`conformance/calibrate.sh`](conformance/calibrate.sh) regenerates them on any
+machine that has one.
+
+The tones are chosen where K-weighting is *not* flat — 60 Hz down the high-pass
+skirt, 10 kHz up on the head shelf — because a merely plausible filter passes
+1 kHz and fails the ends, which sounds fine on a test tone and wrong on a voice.
+
+One reference records a **disagreement on purpose**: on a pure sine, whose true
+peak is exactly its amplitude, ffmpeg's interpolator overshoots by about 0.55 dB
+and this chain lands within 0.1 dB of the analytic answer. ffmpeg is the oracle
+everywhere else here, so the next person to notice the gap will be tempted to
+close it. Closing it would make the chain wrong and cost that much headroom on
+every recording.
+
+**A failure in `test/calibration.test.ts` is not a test to adjust.**
 
 ## Using it
 
@@ -226,22 +343,33 @@ const { onnx, config } = modelUrls(id, 'browser')!;
 const notices = attributionsFor(usedVoiceIds);
 ```
 
-`shippable`, `isAllowed`, `byId`, `displayName`, `qualityOf`, `parseVoiceId`,
-`attributionsFor`, `modelUrls`, and `VOICES`, `MIRRORS`, `LIBRARY`, `CHECKED`.
-No network, no disk, no synthesis — `displayName` in particular works from an id
-alone, including for a model that is not in the catalogue, because a machine that
-cannot render a WAV still has to know what the file would have been called.
+**The catalogue.** `shippable`, `isAllowed`, `refuse`, `byId`, `displayName`,
+`qualityOf`, `parseVoiceId`, `attributionsFor`, `modelUrls`, and `VOICES`,
+`MIRRORS`, `LIBRARY`, `CHECKED`. No network, no disk, no synthesis —
+`displayName` in particular works from an id alone, including for a model that is
+not in the catalogue, because a machine that cannot render a WAV still has to
+know what the file would have been called.
+
+**Speaking.** `speak`, `asBlob`, `usePiper`, `downloaded`, `forget`, and for the
+direct path `usePiperRuntime`, `synthesize`, `phonemise`, `remapPhonemeIds`,
+`hasPiperRuntime`, `downloadedModels`, `forgetModels`. Azure's own helpers —
+`buildSsml`, `azureVoices`, `localeOf`, `AZURE_FORMAT`, `AZURE_RATE`.
+
+**The chain.** `postprocess`, and its pieces separately: `decodeWav`, `encodeWav`,
+`toPcm16`, `resample`, `trim`, `fadeEnds`, `pad`, `integratedLufs`, `truePeakDb`.
+Plus `encodeMp3` and `DEFAULT_BITRATE`, and the contract's own numbers — `TARGET_LUFS`,
+`TARGET_PEAK_DBTP`, `TRIM`, `MEASURE_RATE`, `PIPELINE_VERSION`.
 
 ### For a page with no bundler
 
 mitreden's browser build has no npm and no bundler, deliberately, and vorlaut has
 none yet either. So the package also ships a **committed** self-contained ESM
-build with no bare imports and the catalogue inlined — 13 kB, one file, loadable
-from a relative path or from behind an import map:
+build with no bare imports and the catalogue inlined, loadable from a relative
+path or from behind an import map:
 
 ```
-dist/browser/index.js      the module
-dist/browser/lamejs.js     fetched only if something asks for an MP3
+dist/browser/index.js      the module, 40 kB
+dist/browser/lamejs.js     255 kB, fetched only if something asks for an MP3
 ```
 
 Two files rather than one, and the second is the point: `encodeMp3` sits behind
@@ -253,9 +381,10 @@ to disagree by a bit.
 Committed rather than produced by `prepare`, because a consumer with no package
 manager cannot run `prepare`. CI fails if it stops matching the source.
 
-Fetch it with `tools/vendor.py` and pin it by sha256 in `vendor.lock.json`, or
-drop it in `static/vendor/stimmquelle/` with a `VENDORED.md` recording the commit.
-Both work; they are the two conventions the two consumers already have.
+Both consumers already have a convention for vendoring a file like this — a
+`tools/vendor.py` pinning it by sha256 in `vendor.lock.json`, or a drop into
+`static/vendor/stimmquelle/` with a `VENDORED.md` recording the commit. Either
+works; neither lives here.
 
 ### Just the data
 
@@ -274,11 +403,14 @@ npm test
 npm run build
 ```
 
-The tests are the licensing rule made executable rather than a description of
-the module. Documentation is the weakest form of enforcement: all three of the
-prose statements of this rule were correct on the day a CC BY-NC-SA voice reached
-a browser build. **A failure in `test/catalogue.test.ts` is a licence problem, not
-a broken test.**
+82 tests. They are the rules made executable rather than a description of the
+module. Documentation is the weakest form of enforcement: all three of the prose
+statements of the licensing rule were correct on the day a CC BY-NC-SA voice
+reached a browser build, and the rule was correct in this README on the day
+`synthesize()` fetched the same voice without asking.
+
+**A failure in `test/catalogue.test.ts`, or in the licence gate of
+`test/synthesize.test.ts`, is a licence problem, not a broken test.**
 
 ## Licence
 
