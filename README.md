@@ -243,6 +243,14 @@ a voice already cached by the old path.** It reads as a broken fetch and is not
 one. `forgetModels()` clears this cache; vits-web's own `flush()` clears the
 other, and on a tablet it is worth clearing the one you have stopped using.
 
+What the cache will not do is keep half a model. A download that stops early
+does not raise anything by itself — the reader reports done and a 40 MB fragment
+of a 63 MB file looks finished — so the bytes received are checked against the
+`content-length` that was promised, and a short one throws instead of being
+cached. A `.onnx` already in the cache that is shorter than the size
+`voices.json` records is thrown away and fetched again, which is what heals a
+copy written before that check existed.
+
 ### Level a recording
 
 Trim the silence, measure to ITU-R BS.1770-4, apply one static gain, clamp at the
@@ -403,7 +411,7 @@ npm test
 npm run build
 ```
 
-82 tests. They are the rules made executable rather than a description of the
+88 tests. They are the rules made executable rather than a description of the
 module. Documentation is the weakest form of enforcement: all three of the prose
 statements of the licensing rule were correct on the day a CC BY-NC-SA voice
 reached a browser build, and the rule was correct in this README on the day

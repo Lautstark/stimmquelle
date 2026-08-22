@@ -822,14 +822,17 @@ async function opfs() {
     return null;
   }
 }
-async function cached(name, url, onProgress) {
+async function cached(name, url, o = {}) {
   const r = need();
   if (r.fetchModel) return r.fetchModel(url);
   const dir = await opfs();
   if (dir) {
     try {
       const handle = await dir.getFileHandle(name);
-      return await (await handle.getFile()).arrayBuffer();
+      const file = await handle.getFile();
+      if (!o.expectBytes || file.size >= o.expectBytes) return await file.arrayBuffer();
+      await dir.removeEntry(name).catch(() => {
+      });
     } catch {
     }
   }
@@ -837,7 +840,7 @@ async function cached(name, url, onProgress) {
   if (!response.ok) throw new Error(`${name}: the mirror said ${response.status}`);
   const total = Number(response.headers.get("content-length")) || 0;
   let bytes;
-  if (onProgress && total && response.body) {
+  if (o.onProgress && total && response.body) {
     const reader = response.body.getReader();
     const parts = [];
     let loaded = 0;
@@ -846,7 +849,7 @@ async function cached(name, url, onProgress) {
       if (done) break;
       parts.push(value);
       loaded += value.length;
-      onProgress(loaded / total);
+      o.onProgress(loaded / total);
     }
     bytes = new Uint8Array(loaded);
     let at = 0;
@@ -856,6 +859,11 @@ async function cached(name, url, onProgress) {
     }
   } else {
     bytes = new Uint8Array(await response.arrayBuffer());
+  }
+  if (total && bytes.length !== total) {
+    throw new Error(
+      `${name}: ${bytes.length} bytes arrived of the ${total} the mirror promised. The download stopped early. Nothing has been cached, so trying again is safe.`
+    );
   }
   if (dir) {
     try {
@@ -931,7 +939,11 @@ async function synthesize(text, id, progress) {
   const config = JSON.parse(new TextDecoder().decode(configBytes));
   const { phonemes, phonemeIds } = await phonemise(text, config.espeak.voice);
   const { ids, dropped, exact } = remapPhonemeIds(phonemes, phonemeIds, config.phoneme_id_map);
-  const model = await cached(`${voice.id}.onnx`, urls.onnx, options.onProgress);
+  const model = await cached(
+    `${voice.id}.onnx`,
+    urls.onnx,
+    { expectBytes: voice.bytes, onProgress: options.onProgress }
+  );
   const ort = await r.onnx();
   ort.env.allowLocalModels = false;
   ort.env.wasm.wasmPaths = r.wasmBase.endsWith("/") ? r.wasmBase : `${r.wasmBase}/`;

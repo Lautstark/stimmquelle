@@ -112,7 +112,35 @@ async function opfs(): Promise<FileSystemDirectoryHandle | null> {
   } catch { return null; }
 }
 
-async function cached(name: string, url: string, onProgress?: (share: number) => void): Promise<ArrayBuffer> {
+/**
+ * A model's bytes, from the cache when they are there and whole, else the mirror.
+ *
+ * **A download that stops early does not fail.** The reader reports `done`, the
+ * loop ends, and what is left is a short file — 40 MB of a 63 MB model, say —
+ * which is then written to OPFS and read back on every later sentence. It is not
+ * a fetch error and it is not a decode error at the point it happens: onnxruntime
+ * fails much later, on a file the cache is quietly certain of. Nothing short of
+ * `forgetModels()` recovers, and nobody knows to call it.
+ *
+ * So two checks, for the two ways a short file arrives:
+ *
+ *   - **on the way in**, the bytes received are compared against the
+ *     `content-length` that was promised. A mismatch throws and caches nothing,
+ *     which makes trying again safe rather than futile
+ *   - **on the way out**, a cached `.onnx` shorter than the size `voices.json`
+ *     records for it is thrown away and fetched again. That is what heals the
+ *     entries the version without the first check has already written
+ *
+ * The read check is deliberately `<` and not `!==`. A file that is *shorter*
+ * than the catalogue says is truncated. A file that merely differs is a mirror
+ * that re-uploaded, which is a question about how fresh `voices.json` is and not
+ * about corruption — and treating it as corruption would re-download the model
+ * on every single call, for ever.
+ */
+async function cached(
+  name: string, url: string,
+  o: { expectBytes?: number; onProgress?(share: number): void } = {},
+): Promise<ArrayBuffer> {
   const r = need();
   if (r.fetchModel) return r.fetchModel(url);
 
@@ -120,7 +148,11 @@ async function cached(name: string, url: string, onProgress?: (share: number) =>
   if (dir) {
     try {
       const handle = await dir.getFileHandle(name);
-      return await (await handle.getFile()).arrayBuffer();
+      const file = await handle.getFile();
+      if (!o.expectBytes || file.size >= o.expectBytes) return await file.arrayBuffer();
+      // Short. Written either by a stopped download or by the version of this
+      // function that did not look. Either way it will never become whole.
+      await dir.removeEntry(name).catch(() => {});
     } catch { /* not cached yet */ }
   }
 
@@ -128,7 +160,7 @@ async function cached(name: string, url: string, onProgress?: (share: number) =>
   if (!response.ok) throw new Error(`${name}: the mirror said ${response.status}`);
   const total = Number(response.headers.get('content-length')) || 0;
   let bytes: Uint8Array;
-  if (onProgress && total && response.body) {
+  if (o.onProgress && total && response.body) {
     const reader = response.body.getReader();
     const parts: Uint8Array[] = [];
     let loaded = 0;
@@ -137,13 +169,22 @@ async function cached(name: string, url: string, onProgress?: (share: number) =>
       if (done) break;
       parts.push(value);
       loaded += value.length;
-      onProgress(loaded / total);
+      o.onProgress(loaded / total);
     }
     bytes = new Uint8Array(loaded);
     let at = 0;
     for (const p of parts) { bytes.set(p, at); at += p.length; }
   } else {
     bytes = new Uint8Array(await response.arrayBuffer());
+  }
+
+  // Before the cache, not after it: the whole point is that a short file must
+  // not become the thing every later sentence reads.
+  if (total && bytes.length !== total) {
+    throw new Error(
+      `${name}: ${bytes.length} bytes arrived of the ${total} the mirror promised. `
+      + 'The download stopped early. Nothing has been cached, so trying again is safe.',
+    );
   }
 
   if (dir) {
@@ -296,7 +337,10 @@ export async function synthesize(
   const { phonemes, phonemeIds } = await phonemise(text, config.espeak.voice);
   const { ids, dropped, exact } = remapPhonemeIds(phonemes, phonemeIds, config.phoneme_id_map);
 
-  const model = await cached(`${voice.id}.onnx`, urls.onnx, options.onProgress);
+  // `bytes` in the catalogue is the size of this .onnx as both mirrors serve it,
+  // which makes it the one thing available to judge a cached copy by.
+  const model = await cached(`${voice.id}.onnx`, urls.onnx,
+                             { expectBytes: voice.bytes, onProgress: options.onProgress });
   const ort = await r.onnx();
   ort.env.allowLocalModels = false;
   ort.env.wasm.wasmPaths = r.wasmBase.endsWith('/') ? r.wasmBase : `${r.wasmBase}/`;
