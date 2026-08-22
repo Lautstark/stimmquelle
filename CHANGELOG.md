@@ -69,9 +69,8 @@ the version a consumer pins moves when the file it reads does.
   through the same chain and two voices in one app do not match. The figure
   reported alongside it — about 2.4 dB — is in the commit message for `6ec49a0`
   and in no test, no fixture and no measurement in this repository, so treat it
-  as an observation and not as a number. §1 gives the ceiling priority over the
-  target on purpose; hitting both would mean limiting, which changes the sound.
-  Whether that is worth doing is open.
+  as an observation and not as a number. **Measured properly in 2.2.0 it was
+  3.0 dB**, and that release fixes it.
 
 ### What to edit
 
