@@ -98,3 +98,29 @@ describe('driving piper directly', () => {
     await expect(speak('Hallo', 'piper:en_US-hfc_female-medium')).rejects.toThrow(/may not be shipped/);
   });
 });
+
+describe('the two entry points that sit next to each other', () => {
+  const one = cases[0]!;
+
+  it('tells you which shape it wanted instead of failing inside', async () => {
+    // speak() takes an options object and synthesize() takes a progress
+    // callback. Handing the first to the second used to fail with "onProgress
+    // is not a function" from somewhere in the middle.
+    stub(thorsten.phoneme_id_map, one.phonemes, one.phoneme_ids);
+    await expect(
+      synthesize(one.text, 'piper:de_DE-thorsten-medium', { rate: 16000 } as never),
+    ).rejects.toThrow(/progress callback, or \{ onProgress \}/);
+  });
+
+  it('takes either a callback or an object with one', async () => {
+    stub(thorsten.phoneme_id_map, one.phonemes, one.phoneme_ids);
+    await expect(synthesize(one.text, 'piper:de_DE-thorsten-medium', () => {})).resolves.toBeTruthy();
+    await expect(synthesize(one.text, 'piper:de_DE-thorsten-medium', { onProgress: () => {} }))
+      .resolves.toBeTruthy();
+  });
+
+  it('says what phonemise wants rather than throwing an empty error', async () => {
+    stub(thorsten.phoneme_id_map, one.phonemes, one.phoneme_ids);
+    await expect(phonemise('Hallo', '')).rejects.toThrow(/espeak's language code/);
+  });
+});

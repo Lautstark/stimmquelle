@@ -169,6 +169,25 @@ documented extras rather than part of the contract.
 
 **Ask about a voice.** The catalogue, above.
 
+### Driving piper directly
+
+`usePiperRuntime({ phonemizer, onnx, wasmBase })` makes `speak()` phonemise,
+remap and infer itself instead of calling vits-web's `predict()`. **Opt-in**: a
+consumer that refreshes its vendored copy and calls nothing new gets no change
+in how anything speaks.
+
+It is the only path that can reach a `low` or `x_low` voice, because those need
+ids from the model's own table and `predict()` exposes no seam to put them in.
+It also fetches models from the mirror in `voices.json` rather than vits-web's
+`PATH_MAP`, which brings back `en_US-john-medium` — confirmed speaking.
+
+**It keeps its own model cache**, in an OPFS directory named
+`stimmquelle-models`. That is *not* where `predict()` kept its copies, so **the
+first sentence in a voice downloads again — 63 MB for a medium model — even for
+a voice already cached by the old path.** It reads as a broken fetch and is not
+one. `forgetModels()` clears this cache; vits-web's own `flush()` clears the
+other, and on a tablet it is worth clearing the one you have stopped using.
+
 ### What it deliberately is not
 
 - **not a storage layer** — no phrases, no collections, no cache, no fingerprints

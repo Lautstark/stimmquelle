@@ -875,10 +875,17 @@ async function phonemise(text, espeakVoice) {
   const r = need();
   const { createPiperPhonemize } = await r.phonemizer();
   const base = r.wasmBase.endsWith("/") ? r.wasmBase : `${r.wasmBase}/`;
+  if (!espeakVoice) {
+    throw new TypeError(
+      "phonemise(text, espeakVoice) wants espeak's language code \u2014 the `espeak.voice` field of a model's .onnx.json, usually 'de' or 'en-us'. A piper voice id is not it."
+    );
+  }
   const line = await new Promise((resolve, reject) => {
     createPiperPhonemize({
       print: resolve,
-      printErr: (message) => reject(new Error(message)),
+      printErr: (message) => reject(new Error(
+        message || "the phonemizer failed and said nothing about why"
+      )),
       locateFile: (path) => path.endsWith(".wasm") ? `${base}piper_phonemize.wasm` : path.endsWith(".data") ? `${base}piper_phonemize.data` : path
     }).then((module) => module.callMain([
       "-l",
@@ -892,8 +899,14 @@ async function phonemise(text, espeakVoice) {
   const parsed = JSON.parse(line);
   return { phonemes: parsed.phonemes, phonemeIds: parsed.phoneme_ids };
 }
-async function synthesize(text, id, onProgress) {
+async function synthesize(text, id, progress) {
   const r = need();
+  const onProgress = typeof progress === "function" ? progress : progress?.onProgress;
+  if (progress !== void 0 && onProgress === void 0) {
+    throw new TypeError(
+      "synthesize() takes a progress callback, or { onProgress }. It sits next to speak(), which takes a whole options object \u2014 passing speak's options here is the easy mistake and this is it being caught."
+    );
+  }
   const voice = byId(id);
   if (!voice) throw new Error(`${id} is not in the catalogue, so it must not be fetched.`);
   const urls = modelUrls(voice.id, "browser");

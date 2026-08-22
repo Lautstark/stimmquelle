@@ -189,10 +189,19 @@ export async function phonemise(text: string, espeakVoice: string): Promise<Phon
   const r = need();
   const { createPiperPhonemize } = await r.phonemizer();
   const base = r.wasmBase.endsWith('/') ? r.wasmBase : `${r.wasmBase}/`;
+  if (!espeakVoice) {
+    throw new TypeError(
+      'phonemise(text, espeakVoice) wants espeak\'s language code — the '
+      + "`espeak.voice` field of a model's .onnx.json, usually 'de' or 'en-us'. "
+      + 'A piper voice id is not it.',
+    );
+  }
   const line = await new Promise<string>((resolve, reject) => {
     createPiperPhonemize({
       print: resolve,
-      printErr: message => reject(new Error(message)),
+      printErr: message => reject(new Error(
+        message || 'the phonemizer failed and said nothing about why',
+      )),
       locateFile: path => path.endsWith('.wasm') ? `${base}piper_phonemize.wasm`
                         : path.endsWith('.data') ? `${base}piper_phonemize.data`
                         : path,
@@ -208,6 +217,15 @@ export async function phonemise(text: string, espeakVoice: string): Promise<Phon
 
 // --- the whole thing -----------------------------------------------------------
 
+/**
+ * Either a bare callback or `{ onProgress }`.
+ *
+ * `speak()` next door takes a whole options object, so handing this one the
+ * same object is the obvious slip. It used to fail with "onProgress is not a
+ * function" from somewhere inside; now it either works or says which it wanted.
+ */
+export type SynthesizeProgress = ((share: number) => void) | { onProgress?(share: number): void };
+
 export interface Synthesised {
   readonly samples: Float32Array;
   readonly rate: number;
@@ -222,9 +240,17 @@ export interface Synthesised {
  * Levelling is a separate step on purpose — `postprocess` takes it from here.
  */
 export async function synthesize(
-  text: string, id: string, onProgress?: (share: number) => void,
+  text: string, id: string, progress?: SynthesizeProgress,
 ): Promise<Synthesised> {
   const r = need();
+  const onProgress = typeof progress === 'function' ? progress : progress?.onProgress;
+  if (progress !== undefined && onProgress === undefined) {
+    throw new TypeError(
+      'synthesize() takes a progress callback, or { onProgress }. It sits next '
+      + 'to speak(), which takes a whole options object — passing speak\'s '
+      + 'options here is the easy mistake and this is it being caught.',
+    );
+  }
   const voice = byId(id);
   if (!voice) throw new Error(`${id} is not in the catalogue, so it must not be fetched.`);
   const urls = modelUrls(voice.id, 'browser')!;
