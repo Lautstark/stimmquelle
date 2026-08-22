@@ -52,160 +52,315 @@
     "",
     "Every licence and every byte count below was read from the MODEL_CARD and the",
     "mirror on the date in 'checked', not copied from anywhere. Both mirrors were",
-    "compared and carry identical bytes for every entry."
+    "compared and carry identical bytes for every entry.",
+    "",
+    "Roughly a third of the English medium and high voices piper publishes cannot be handed on, and none of them says so anywhere a file name would show it. hfc_female, hfc_male and ryan in both qualities are all CC BY-NC-SA. That is the reason the rejected entries are in this file rather than left out of it."
   ],
-
   "revised": "2026-08-22",
   "checked": "2026-08-22",
-
-  "library": { "name": "@diffusionstudio/vits-web", "version": "1.0.3" },
+  "library": {
+    "name": "@diffusionstudio/vits-web",
+    "version": "1.0.3"
+  },
   "mirrors": {
     "container": "https://huggingface.co/rhasspy/piper-voices/resolve/main",
     "browser": "https://huggingface.co/diffusionstudio/piper-voices/resolve/main"
   },
-
   "voices": [
     {
       "id": "de_DE-thorsten-medium",
       "name": "Thorsten",
-      "lang": "de", "locale": "de_DE", "gender": "male", "quality": "medium",
-      "bytes": 63201294, "sampleRate": 22050, "speakers": 1,
-      "licence": { "name": "CC0", "ship": true },
-      "browser": "ok", "container": "ok",
+      "lang": "de",
+      "locale": "de_DE",
+      "gender": "male",
+      "quality": "medium",
+      "bytes": 63201294,
+      "sampleRate": 22050,
+      "speakers": 1,
+      "licence": {
+        "name": "CC0",
+        "ship": true
+      },
+      "browser": "ok",
+      "container": "ok",
       "proof": "spike, vorlaut, container",
       "note": "The default in both browser builds, and the only single German voice that speaks in a tab."
     },
     {
       "id": "de_DE-thorsten-high",
       "name": "Thorsten",
-      "lang": "de", "locale": "de_DE", "gender": "male", "quality": "high",
-      "bytes": 113895201, "sampleRate": 22050, "speakers": 1,
-      "licence": { "name": "CC0", "ship": true },
-      "browser": "ok", "container": "ok",
+      "lang": "de",
+      "locale": "de_DE",
+      "gender": "male",
+      "quality": "high",
+      "bytes": 113895201,
+      "sampleRate": 22050,
+      "speakers": 1,
+      "licence": {
+        "name": "CC0",
+        "ship": true
+      },
+      "browser": "ok",
+      "container": "ok",
       "proof": "spike",
       "note": "The same person as de_DE-thorsten-medium and nearly twice the download. A picker showing both has to say more than the name."
     },
     {
       "id": "de_DE-thorsten_emotional-medium",
       "name": "Thorsten (emotional)",
-      "lang": "de", "locale": "de_DE", "gender": "male", "quality": "medium",
-      "bytes": 76745905, "sampleRate": 22050, "speakers": 8,
-      "licence": { "name": "CC0", "ship": true },
-      "browser": "ok", "container": "ok",
+      "lang": "de",
+      "locale": "de_DE",
+      "gender": "male",
+      "quality": "medium",
+      "bytes": 76745905,
+      "sampleRate": 22050,
+      "speakers": 8,
+      "licence": {
+        "name": "CC0",
+        "ship": true
+      },
+      "browser": "ok",
+      "container": "ok",
       "proof": "spike",
       "note": "Eight speakers, one per emotion, chosen by speaker id. vits-web speaks the first and offers no way to pick another, so in a browser this is one mood and not eight."
     },
     {
       "id": "de_DE-mls-medium",
       "name": "MLS",
-      "lang": "de", "locale": "de_DE", "gender": "mixed", "quality": "medium",
-      "bytes": 76961079, "sampleRate": 22050, "speakers": 236,
+      "lang": "de",
+      "locale": "de_DE",
+      "gender": "mixed",
+      "quality": "medium",
+      "bytes": 76961079,
+      "sampleRate": 22050,
+      "speakers": 236,
       "licence": {
-        "name": "CC-BY 4.0", "ship": true,
+        "name": "CC-BY 4.0",
+        "ship": true,
         "attribution": "Stimme: Multilingual LibriSpeech (MLS), CC BY 4.0.",
         "note": "Shippable only where the attribution is actually rendered. Nothing in the family renders one yet, so adding this voice means adding that first."
       },
-      "browser": "ok", "container": "ok",
+      "browser": "ok",
+      "container": "ok",
       "proof": "spike",
-      "note": "A corpus, not a person: 236 speakers in one model and no name a picker can show. The closest thing to a German female voice that runs in a browser at all, which is a statement about the alternatives rather than about this."
+      "note": "A corpus, not a person: 236 speakers in one model and no name a picker can show. The closest thing to a German female voice that runs in a browser at all, which is a statement about the alternatives rather than about this. Listened to rather than assumed: a sentence came back roughly four times longer than Thorsten's. The attribution is not the only thing standing between this and a usable second German voice."
     },
     {
       "id": "en_US-kristin-medium",
       "name": "Kristin",
-      "lang": "en", "locale": "en_US", "gender": "female", "quality": "medium",
-      "bytes": 63531379, "sampleRate": 22050, "speakers": 1,
-      "licence": { "name": "public domain", "ship": true },
-      "browser": "ok", "container": "ok",
+      "lang": "en",
+      "locale": "en_US",
+      "gender": "female",
+      "quality": "medium",
+      "bytes": 63531379,
+      "sampleRate": 22050,
+      "speakers": 1,
+      "licence": {
+        "name": "public domain",
+        "ship": true
+      },
+      "browser": "ok",
+      "container": "ok",
       "proof": "spike, vorlaut, container"
     },
     {
       "id": "en_US-ljspeech-medium",
       "name": "LJ Speech",
-      "lang": "en", "locale": "en_US", "gender": "female", "quality": "medium",
-      "bytes": 63531379, "sampleRate": 22050, "speakers": 1,
-      "licence": { "name": "public domain", "ship": true },
-      "browser": "ok", "container": "ok",
-      "proof": "rule",
-      "note": "The name of a dataset, which reads like a mistake in a list of first names. Here as the free English fallback if Kristin ever goes, not as something to offer."
+      "lang": "en",
+      "locale": "en_US",
+      "gender": "female",
+      "quality": "medium",
+      "bytes": 63531379,
+      "sampleRate": 22050,
+      "speakers": 1,
+      "licence": {
+        "name": "public domain",
+        "ship": true
+      },
+      "browser": "ok",
+      "container": "ok",
+      "proof": "rule, mitreden",
+      "note": "The name of a dataset, which reads like a mistake in a list of first names. In mitreden's list since hfc_female came out of it, and recorded in the live page before it was added rather than taken on the strength of the tier."
     },
     {
       "id": "de_DE-kerstin-low",
       "name": "Kerstin",
-      "lang": "de", "locale": "de_DE", "gender": "female", "quality": "low",
-      "bytes": 63104526, "sampleRate": 16000, "speakers": 1,
-      "licence": { "name": "CC0", "ship": true },
-      "browser": "quality", "container": "ok",
+      "lang": "de",
+      "locale": "de_DE",
+      "gender": "female",
+      "quality": "low",
+      "bytes": 63104526,
+      "sampleRate": 16000,
+      "speakers": 1,
+      "licence": {
+        "name": "CC0",
+        "ship": true
+      },
+      "browser": "quality",
+      "container": "ok",
       "proof": "container",
       "note": "Free to ship and fine in a container - she is mitreden's container default and is in vorlaut's. Published as low only, so no other file helps. Reading each model's own phoneme_id_map instead of vits-web's fixed table is what would bring her back, and it means owning the phonemizer glue rather than calling a library. Note the 16 kHz: vorlaut's device wants exactly that, so a low voice would need no resampling at all."
     },
     {
       "id": "en_US-john-medium",
       "name": "John",
-      "lang": "en", "locale": "en_US", "gender": "male", "quality": "medium",
-      "bytes": 63531379, "sampleRate": 22050, "speakers": 1,
-      "licence": { "name": "public domain", "ship": true },
-      "browser": "reach", "container": "ok",
+      "lang": "en",
+      "locale": "en_US",
+      "gender": "male",
+      "quality": "medium",
+      "bytes": 63531379,
+      "sampleRate": 22050,
+      "speakers": 1,
+      "licence": {
+        "name": "public domain",
+        "ship": true
+      },
+      "browser": "reach",
+      "container": "ok",
       "proof": "container",
       "note": "Not missing from the mirror - it is on both, at the byte count above, and both container images fetch it successfully. vits-web cannot have it: predict() looks the id up in PATH_MAP, finds nothing, and asks the mirror for 'undefined.json'. voices() advertises it anyway. mitreden's docs/spike/README.md recorded this as missing files, which was wrong and has been corrected there."
     },
     {
       "id": "de_DE-eva_k-x_low",
       "name": "Eva K",
-      "lang": "de", "locale": "de_DE", "gender": "female", "quality": "x_low",
-      "bytes": 20628813, "sampleRate": 16000, "speakers": 1,
+      "lang": "de",
+      "locale": "de_DE",
+      "gender": "female",
+      "quality": "x_low",
+      "bytes": 20628813,
+      "sampleRate": 16000,
+      "speakers": 1,
       "licence": {
-        "name": "unclear", "ship": false,
+        "name": "unclear",
+        "ship": false,
         "note": "The MODEL_CARD names no licence. It points at the M-AILABS speech dataset, https://www.caito.de/2019/01/03/the-m-ailabs-speech-dataset/, and says 'See URL'. Unclear is not a yes - this is exactly the case mitreden's README warns about."
       },
-      "browser": "quality", "container": "ok",
+      "browser": "quality",
+      "container": "ok",
       "proof": "rule",
       "note": "The second of the three German female voices piper publishes. At 20.6 MB it is the only one that is genuinely smaller than a medium model - low is not, despite the name."
     },
     {
       "id": "de_DE-ramona-low",
       "name": "Ramona",
-      "lang": "de", "locale": "de_DE", "gender": "female", "quality": "low",
-      "bytes": 63104526, "sampleRate": 16000, "speakers": 1,
-      "licence": { "name": "unclear", "ship": false, "note": "M-AILABS, 'See URL'. Same as Eva K." },
-      "browser": "quality", "container": "ok",
+      "lang": "de",
+      "locale": "de_DE",
+      "gender": "female",
+      "quality": "low",
+      "bytes": 63104526,
+      "sampleRate": 16000,
+      "speakers": 1,
+      "licence": {
+        "name": "unclear",
+        "ship": false,
+        "note": "M-AILABS, 'See URL'. Same as Eva K."
+      },
+      "browser": "quality",
+      "container": "ok",
       "proof": "rule",
       "note": "The third and last German female voice piper publishes."
     },
     {
       "id": "de_DE-karlsson-low",
       "name": "Karlsson",
-      "lang": "de", "locale": "de_DE", "gender": "male", "quality": "low",
-      "bytes": 63104526, "sampleRate": 16000, "speakers": 1,
-      "licence": { "name": "unclear", "ship": false, "note": "M-AILABS, 'See URL'. Same as Eva K." },
-      "browser": "quality", "container": "ok",
+      "lang": "de",
+      "locale": "de_DE",
+      "gender": "male",
+      "quality": "low",
+      "bytes": 63104526,
+      "sampleRate": 16000,
+      "speakers": 1,
+      "licence": {
+        "name": "unclear",
+        "ship": false,
+        "note": "M-AILABS, 'See URL'. Same as Eva K."
+      },
+      "browser": "quality",
+      "container": "ok",
       "proof": "rule"
     },
     {
       "id": "en_US-hfc_female-medium",
       "name": "HFC female",
-      "lang": "en", "locale": "en_US", "gender": "female", "quality": "medium",
-      "bytes": 63201294, "sampleRate": 22050, "speakers": 1,
+      "lang": "en",
+      "locale": "en_US",
+      "gender": "female",
+      "quality": "medium",
+      "bytes": 63201294,
+      "sampleRate": 22050,
+      "speakers": 1,
       "licence": {
-        "name": "CC BY-NC-SA 4.0", "ship": false,
+        "name": "CC BY-NC-SA 4.0",
+        "ship": false,
         "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en",
         "note": "Non-commercial and share-alike. Not a condition a recording made for somebody else's child can carry."
       },
-      "browser": "ok", "container": "ok",
+      "browser": "ok",
+      "container": "ok",
       "proof": "spike",
       "note": "The voice this file exists for. It speaks perfectly, it was in mitreden's browser build on exactly that basis, and it cannot be shipped. Nothing failed when it was wrong; the file simply played."
     },
     {
       "id": "en_US-hfc_male-medium",
       "name": "HFC male",
-      "lang": "en", "locale": "en_US", "gender": "male", "quality": "medium",
-      "bytes": 63201294, "sampleRate": 22050, "speakers": 1,
+      "lang": "en",
+      "locale": "en_US",
+      "gender": "male",
+      "quality": "medium",
+      "bytes": 63201294,
+      "sampleRate": 22050,
+      "speakers": 1,
       "licence": {
-        "name": "CC BY-NC-SA 4.0", "ship": false,
+        "name": "CC BY-NC-SA 4.0",
+        "ship": false,
         "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en",
         "note": "Same dataset, same model card, same answer."
       },
-      "browser": "ok", "container": "ok",
+      "browser": "ok",
+      "container": "ok",
       "proof": "rule"
+    },
+    {
+      "id": "en_US-ryan-medium",
+      "name": "Ryan",
+      "lang": "en",
+      "locale": "en_US",
+      "gender": "male",
+      "quality": "medium",
+      "bytes": 63201294,
+      "sampleRate": 22050,
+      "speakers": 1,
+      "licence": {
+        "name": "CC BY-NC-SA 4.0",
+        "ship": false,
+        "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en",
+        "note": "Non-commercial and share-alike. Not a condition a recording made for somebody else's child can carry."
+      },
+      "browser": "ok",
+      "container": "ok",
+      "proof": "rule",
+      "note": "Runs, and cannot ship. Listed so that the next person to go looking for an English male voice finds the answer rather than the model card."
+    },
+    {
+      "id": "en_US-ryan-high",
+      "name": "Ryan",
+      "lang": "en",
+      "locale": "en_US",
+      "gender": "male",
+      "quality": "high",
+      "bytes": 120786792,
+      "sampleRate": 22050,
+      "speakers": 1,
+      "licence": {
+        "name": "CC BY-NC-SA 4.0",
+        "ship": false,
+        "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en",
+        "note": "Non-commercial and share-alike. Not a condition a recording made for somebody else's child can carry."
+      },
+      "browser": "ok",
+      "container": "ok",
+      "proof": "rule",
+      "note": "Same model card as the medium. Both qualities, one licence."
     }
   ]
 }

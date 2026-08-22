@@ -21,6 +21,7 @@ export {
   toPcm16, trim, truePeakDb,
   type Levelled, type LevelOptions,
 } from './level.js';
+export { DEFAULT_BITRATE, encodeMp3 } from './mp3.js';
 export {
   asBlob, AZURE_FORMAT, AZURE_RATE, azureVoices, buildSsml, downloaded, forget,
   localeOf, speak, usePiper,

@@ -618,10 +618,36 @@ function postprocess(wavBytes, o = {}) {
   };
 }
 
+// src/mp3.ts
+var lame = null;
+var load = () => lame ??= import("./lamejs.js");
+var DEFAULT_BITRATE = 192;
+async function encodeMp3(samples, rate, bitrate = DEFAULT_BITRATE) {
+  const { Mp3Encoder } = await load();
+  const encoder = new Mp3Encoder(1, rate, bitrate);
+  const pcm = toPcm16(samples);
+  const parts = [];
+  for (let i = 0; i < pcm.length; i += 1152) {
+    const block = encoder.encodeBuffer(pcm.subarray(i, i + 1152));
+    if (block.length) parts.push(new Uint8Array(block));
+  }
+  const rest = encoder.flush();
+  if (rest.length) parts.push(new Uint8Array(rest));
+  let total = 0;
+  for (const p of parts) total += p.length;
+  const out = new Uint8Array(total);
+  let at = 0;
+  for (const p of parts) {
+    out.set(p, at);
+    at += p.length;
+  }
+  return out;
+}
+
 // src/speak.ts
 var loadPiper = null;
-function usePiper(load) {
-  loadPiper = load;
+function usePiper(load2) {
+  loadPiper = load2;
 }
 async function piper() {
   if (!loadPiper) {
@@ -718,6 +744,7 @@ export {
   AZURE_FORMAT,
   AZURE_RATE,
   CHECKED,
+  DEFAULT_BITRATE,
   LIBRARY,
   MEASURE_RATE,
   MIRRORS,
@@ -734,6 +761,7 @@ export {
   decodeWav,
   displayName,
   downloaded,
+  encodeMp3,
   encodeWav,
   fadeEnds,
   forget,

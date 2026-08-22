@@ -173,9 +173,6 @@ documented extras rather than part of the contract.
 
 - **not a storage layer** — no phrases, no collections, no cache, no fingerprints
   beyond the terms in `CONTRACT.md` §3
-- **not an MP3 encoder** — roughly 250 KB of `lamejs` that a talker reading
-  16 kHz WAV never calls. `postprocess` returns a WAV; a consumer that wants MP3
-  encodes it itself
 - **not a key store** — Azure credentials are passed per call
 - **not a promise of identical audio between two runtimes.** piper is a VITS
   model that samples: three renders of one sentence gave three different files.
@@ -224,8 +221,15 @@ build with no bare imports and the catalogue inlined — 13 kB, one file, loadab
 from a relative path or from behind an import map:
 
 ```
-dist/browser/stimmquelle.js
+dist/browser/index.js      the module
+dist/browser/lamejs.js     fetched only if something asks for an MP3
 ```
+
+Two files rather than one, and the second is the point: `encodeMp3` sits behind
+a dynamic import, so a consumer that only writes WAV never fetches the encoder.
+That is what makes it safe for the package to own MP3 at all — the alternative
+was every consumer bringing its own, and two copies of the 16-bit rounding free
+to disagree by a bit.
 
 Committed rather than produced by `prepare`, because a consumer with no package
 manager cannot run `prepare`. CI fails if it stops matching the source.
