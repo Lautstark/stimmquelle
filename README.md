@@ -113,33 +113,66 @@ means no resampling at all.
 
 ---
 
-## What is not here yet
+## What it does
 
-No code. Deliberately, and only for now.
+Three things, independent enough to use separately.
 
-The catalogue and the contract are the parts that were already duplicated and
-already wrong, and they are the parts a container, a browser with no build step,
-a bundler and a shell script can all consume without an adapter. They are worth
-having on their own.
+**Speak a sentence.** piper compiled to WASM, or Azure straight from the tab.
 
-The implementations follow, in this order:
+```ts
+import { speak, usePiper, asBlob } from '@lautstark/stimmquelle';
 
-1. **`js/`** — synthesis, trim, BS.1770 measurement, gain and peak clamp,
-   resample, `encodeWav`. Two of these exist already and agree on where the seam
-   goes: vorlaut's `static/tts/level.js` and mitreden's `docs/app/audio.js`, each
-   written for its own reasons and each putting everything up to the gain stage
-   on one side and the encoder on the other. `level.js` reaches further — it owns
-   its resampler and WAV decoder, so the whole chain runs under node — and
-   `audio.js` brings the tests.
-2. **`conformance/`** — the twenty sentences with expected values checked in, and
-   a runner per implementation. See `CONTRACT.md` §7, in particular the rule that
-   the same recording is levelled twice and never rendered twice.
-3. **`python/stimmquelle.py`** — one stdlib-only module, because mitreden's
-   container has no pip dependencies and is not getting one.
+usePiper(() => import('./vendor/vits-web.js'));   // wherever this app serves it from
 
-**MP3 encoding is not coming.** It is roughly 250 KB of `lamejs` that a talker
-reading 16 kHz WAV never calls. The package returns levelled PCM and its sample
-rate; the consumer encodes.
+const out = await speak('Ich möchte noch nicht ins Bett.', 'piper:de_DE-thorsten-medium',
+                        { rate: 16000, onProgress: p => show(p.share) });
+audio.src = URL.createObjectURL(asBlob(out.wav));
+```
+
+`speak` **checks the catalogue before it fetches anything.** A voice that may not
+be shipped, or that cannot speak in a browser, or that is not in the list at all,
+throws with the reason. The licensing rule is only worth something if something
+enforces it at the moment a voice is about to be used, rather than in a README.
+
+Azure needs a key, which is passed per call and never stored here — see the
+warning in `CONTRACT.md` §8, because a static site that speaks with Azure has
+given its key to everyone who opens it.
+
+**Level a recording.** Trim the silence, measure to ITU-R BS.1770-4, apply one
+static gain, clamp at the ceiling, write a WAV.
+
+```ts
+import { postprocess } from '@lautstark/stimmquelle';
+
+const { wav, lufs, gainDb, clamped, peakDb } = postprocess(rawWav, { rate: 44100 });
+```
+
+It is **free of the browser** — no AudioContext, no DOM, no fetch — so the same
+code runs under node and can be measured against ffmpeg. That is not an
+accident: this is a second implementation of a chain that already exists in
+`ffmpeg`, and the only thing that makes a second implementation defensible is
+that it is checked against the first. Web Audio would have done the decoding and
+resampling in a line each and made that check impossible.
+
+The defaults are the contract's: trim at −50 dB keeping 50 ms, target −16 LUFS,
+ceiling −1.5 dBTP, **no compression and no limiter**. A device may add a fade and
+a tail pad — `fadeSec`, `padSec` — which do not change measured loudness and are
+documented extras rather than part of the contract.
+
+**Ask about a voice.** The catalogue, above.
+
+### What it deliberately is not
+
+- **not a storage layer** — no phrases, no collections, no cache, no fingerprints
+  beyond the terms in `CONTRACT.md` §3
+- **not an MP3 encoder** — roughly 250 KB of `lamejs` that a talker reading
+  16 kHz WAV never calls. `postprocess` returns a WAV; a consumer that wants MP3
+  encodes it itself
+- **not a key store** — Azure credentials are passed per call
+- **not a promise of identical audio between two runtimes.** piper is a VITS
+  model that samples: three renders of one sentence gave three different files.
+  What two implementations can agree on is the *level*, and `CONTRACT.md` §7 says
+  how closely
 
 ## Using it
 

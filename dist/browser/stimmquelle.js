@@ -290,7 +290,7 @@ var voices_default = {
   ]
 };
 
-// src/index.ts
+// src/catalogue.ts
 var VOICES = Object.freeze(
   voices_default.voices.map((v) => Object.freeze(v))
 );
@@ -344,17 +344,404 @@ function modelUrls(id, runtime) {
   const dir = `${voice.lang}/${voice.locale}/${speakerOf(voice)}/${voice.quality}`;
   return { onnx: `${base}/${dir}/${voice.id}.onnx`, config: `${base}/${dir}/${voice.id}.onnx.json` };
 }
+
+// src/contract.ts
+var TARGET_LUFS = -16;
+var TARGET_PEAK_DBTP = -1.5;
+var TRIM = Object.freeze({
+  thresholdDb: -50,
+  keepHeadSec: 0.05,
+  keepTailSec: 0.05
+});
+var MEASURE_RATE = 48e3;
+var PIPELINE_VERSION = 1;
+
+// src/level.ts
+var magic = (view, at) => String.fromCharCode(
+  view.getUint8(at),
+  view.getUint8(at + 1),
+  view.getUint8(at + 2),
+  view.getUint8(at + 3)
+);
+function decodeWav(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  if (magic(view, 0) !== "RIFF" || magic(view, 8) !== "WAVE") throw new Error("not a RIFF/WAVE file");
+  let format = 0, channels = 0, rate = 0, bits = 0;
+  let data = null;
+  for (let at = 12; at + 8 <= bytes.byteLength; ) {
+    const id = magic(view, at);
+    const size = view.getUint32(at + 4, true);
+    const body = at + 8;
+    if (id === "fmt ") {
+      format = view.getUint16(body, true);
+      channels = view.getUint16(body + 2, true);
+      rate = view.getUint32(body + 4, true);
+      bits = view.getUint16(body + 14, true);
+    } else if (id === "data") {
+      data = { at: body, size: Math.min(size, bytes.byteLength - body) };
+    }
+    at = body + size + size % 2;
+  }
+  if (!rate || !data || !channels) throw new Error("WAVE file without fmt or data");
+  const float = format === 3;
+  const width = bits / 8;
+  const frames = Math.floor(data.size / (width * channels));
+  const out = new Float32Array(frames);
+  for (let i = 0; i < frames; i++) {
+    let sum = 0;
+    for (let c = 0; c < channels; c++) {
+      const at = data.at + (i * channels + c) * width;
+      if (float) sum += bits === 64 ? view.getFloat64(at, true) : view.getFloat32(at, true);
+      else if (bits === 16) sum += view.getInt16(at, true) / 32768;
+      else if (bits === 24) sum += (view.getUint8(at) | view.getUint8(at + 1) << 8 | view.getInt8(at + 2) << 16) / 8388608;
+      else if (bits === 32) sum += view.getInt32(at, true) / 2147483648;
+      else if (bits === 8) sum += (view.getUint8(at) - 128) / 128;
+      else throw new Error(`WAVE with ${bits} bit samples`);
+    }
+    out[i] = sum / channels;
+  }
+  return { samples: out, rate };
+}
+function encodeWav(samples, rate) {
+  const bytes = new Uint8Array(44 + samples.length * 2);
+  const view = new DataView(bytes.buffer);
+  const text = (at, s) => {
+    for (let i = 0; i < s.length; i++) view.setUint8(at + i, s.charCodeAt(i));
+  };
+  text(0, "RIFF");
+  view.setUint32(4, 36 + samples.length * 2, true);
+  text(8, "WAVEfmt ");
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  text(36, "data");
+  view.setUint32(40, samples.length * 2, true);
+  for (let i = 0; i < samples.length; i++) {
+    const v = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(44 + i * 2, Math.round(v < 0 ? v * 32768 : v * 32767), true);
+  }
+  return bytes;
+}
+var sinc = (x) => x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x);
+var gcd = (a, b) => b ? gcd(b, a % b) : a;
+var ZEROS = 24;
+var MAX_PHASES = 4096;
+var kernelCache = /* @__PURE__ */ new Map();
+function kernels(inRate, outRate) {
+  const key = `${inRate}>${outRate}`;
+  const known = kernelCache.get(key);
+  if (known !== void 0) return known;
+  const common = gcd(inRate, outRate);
+  const phaseCount = outRate / common;
+  const stride = inRate / common;
+  if (phaseCount > MAX_PHASES) {
+    kernelCache.set(key, null);
+    return null;
+  }
+  const fc = 0.5 * Math.min(1, outRate / inRate);
+  const halfWidth = ZEROS / (2 * fc);
+  const phases = [];
+  for (let r = 0; r < phaseCount; r++) {
+    const exact = r * stride / phaseCount;
+    const whole = Math.floor(exact);
+    const offset = exact - whole;
+    const first = Math.ceil(offset - halfWidth);
+    const last = Math.floor(offset + halfWidth);
+    const taps = new Float64Array(last - first + 1);
+    let norm = 0;
+    for (let k = first; k <= last; k++) {
+      const t = k - offset;
+      const angle = Math.PI * t / halfWidth;
+      const h = 2 * fc * sinc(2 * fc * t) * (0.42 + 0.5 * Math.cos(angle) + 0.08 * Math.cos(2 * angle));
+      taps[k - first] = h;
+      norm += h;
+    }
+    phases.push({ start: whole + first, taps, norm });
+  }
+  const built = { phaseCount, stride, phases };
+  kernelCache.set(key, built);
+  return built;
+}
+function resample(x, inRate, outRate) {
+  if (inRate === outRate || x.length === 0) return x;
+  const outLen = Math.max(1, Math.round(x.length * outRate / inRate));
+  const y = new Float32Array(outLen);
+  const built = kernels(inRate, outRate);
+  if (built === null) return resampleSlowly(x, inRate, outRate, y);
+  const { phaseCount, stride, phases } = built;
+  for (let i = 0, r = 0, block = 0; i < outLen; i++) {
+    const phase = phases[r];
+    const taps = phase.taps;
+    const from = block * stride + phase.start;
+    let sum = 0;
+    for (let n = 0; n < taps.length; n++) {
+      const j = from + n;
+      if (j >= 0 && j < x.length) sum += x[j] * taps[n];
+    }
+    y[i] = phase.norm ? sum / phase.norm : 0;
+    if (++r === phaseCount) {
+      r = 0;
+      block++;
+    }
+  }
+  return y;
+}
+function resampleSlowly(x, inRate, outRate, y) {
+  const ratio = outRate / inRate;
+  const fc = 0.5 * Math.min(1, ratio);
+  const halfWidth = ZEROS / (2 * fc);
+  for (let i = 0; i < y.length; i++) {
+    const centre = i / ratio;
+    let sum = 0, norm = 0;
+    for (let j = Math.ceil(centre - halfWidth); j <= Math.floor(centre + halfWidth); j++) {
+      const t = j - centre;
+      const angle = Math.PI * t / halfWidth;
+      const h = 2 * fc * sinc(2 * fc * t) * (0.42 + 0.5 * Math.cos(angle) + 0.08 * Math.cos(2 * angle));
+      norm += h;
+      if (j >= 0 && j < x.length) sum += x[j] * h;
+    }
+    y[i] = norm ? sum / norm : 0;
+  }
+  return y;
+}
+function trim(x, rate, o = {}) {
+  const threshold = Math.pow(10, (o.thresholdDb ?? TRIM.thresholdDb) / 20);
+  let a = 0, b = x.length - 1;
+  while (a < x.length && Math.abs(x[a]) <= threshold) a++;
+  while (b > a && Math.abs(x[b]) <= threshold) b--;
+  if (a >= b) return x;
+  const from = Math.max(0, a - Math.round((o.keepHeadSec ?? TRIM.keepHeadSec) * rate));
+  const to = Math.min(x.length, b + Math.round((o.keepTailSec ?? TRIM.keepTailSec) * rate) + 1);
+  return x.subarray(from, to);
+}
+function fadeEnds(x, rate, seconds) {
+  const n = Math.min(Math.round(seconds * rate), Math.floor(x.length / 2));
+  const y = Float32Array.from(x);
+  for (let i = 0; i < n; i++) {
+    const g = i / n;
+    y[i] *= g;
+    y[y.length - 1 - i] *= g;
+  }
+  return y;
+}
+function pad(x, rate, seconds) {
+  const y = new Float32Array(x.length + Math.round(seconds * rate));
+  y.set(x, 0);
+  return y;
+}
+function biquad(x, b0, b1, b2, a1, a2) {
+  const y = new Float32Array(x.length);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < x.length; i++) {
+    const v = b0 * x[i] + b1 * x1 + b2 * x2 - a1 * y1 - a2 * y2;
+    x2 = x1;
+    x1 = x[i];
+    y2 = y1;
+    y1 = v;
+    y[i] = v;
+  }
+  return y;
+}
+function integratedLufs(x) {
+  let k = biquad(
+    x,
+    1.53512485958697,
+    -2.69169618940638,
+    1.19839281085285,
+    -1.69065929318241,
+    0.73248077421585
+  );
+  k = biquad(k, 1, -2, 1, -1.99004745483398, 0.99007225036621);
+  const block = Math.round(0.4 * 48e3), step = Math.round(0.1 * 48e3);
+  const power = [];
+  for (let s = 0; s + block <= k.length; s += step) {
+    let sum = 0;
+    for (let i = s; i < s + block; i++) sum += k[i] * k[i];
+    power.push(sum / block);
+  }
+  if (!power.length && k.length) {
+    let sum = 0;
+    for (let i = 0; i < k.length; i++) sum += k[i] * k[i];
+    power.push(sum / k.length);
+  }
+  if (!power.length) return -Infinity;
+  const loudness = (v) => -0.691 + 10 * Math.log10(v || 1e-12);
+  const mean = (list) => list.reduce((a, b) => a + b, 0) / list.length;
+  let gated = power.filter((v) => loudness(v) > -70);
+  if (!gated.length) return -Infinity;
+  const relative = loudness(mean(gated)) - 10;
+  gated = gated.filter((v) => loudness(v) > relative);
+  return gated.length ? loudness(mean(gated)) : -Infinity;
+}
+function truePeakDb(x, rate) {
+  const dense = resample(x, rate, rate * 4);
+  let peak = 0;
+  for (let i = 0; i < dense.length; i++) peak = Math.max(peak, Math.abs(dense[i]));
+  for (let i = 0; i < x.length; i++) peak = Math.max(peak, Math.abs(x[i]));
+  return 20 * Math.log10(peak || 1e-12);
+}
+function postprocess(wavBytes, o = {}) {
+  const rate = o.rate ?? 44100;
+  const { samples, rate: inRate } = decodeWav(wavBytes);
+  let shaped = trim(samples, inRate, o);
+  if (o.fadeSec) shaped = fadeEnds(shaped, inRate, o.fadeSec);
+  if (o.padSec) shaped = pad(shaped, inRate, o.padSec);
+  const lufs = integratedLufs(resample(shaped, inRate, 48e3));
+  const out = resample(shaped, inRate, rate);
+  let gainDb = TARGET_LUFS - lufs;
+  const peakDb = truePeakDb(out, rate);
+  const headroom = TARGET_PEAK_DBTP - peakDb;
+  const clamped = gainDb > headroom;
+  if (clamped) gainDb = headroom;
+  const gain = Math.pow(10, gainDb / 20);
+  const levelled = new Float32Array(out.length);
+  for (let i = 0; i < out.length; i++) levelled[i] = out[i] * gain;
+  return {
+    wav: encodeWav(levelled, rate),
+    rate,
+    seconds: levelled.length / rate,
+    lufs,
+    gainDb,
+    clamped,
+    peakDb: peakDb + gainDb
+  };
+}
+
+// src/speak.ts
+var loadPiper = null;
+function usePiper(load) {
+  loadPiper = load;
+}
+async function piper() {
+  if (!loadPiper) {
+    throw new Error(
+      "No piper module. Call usePiper(() => import(\u2026)) with wherever this app serves @diffusionstudio/vits-web from."
+    );
+  }
+  return loadPiper();
+}
+async function downloaded() {
+  return (await piper()).stored();
+}
+async function forget() {
+  return (await piper()).flush();
+}
+async function synthesizePiper(text, model, onProgress) {
+  const tts = await piper();
+  if (!(model in tts.PATH_MAP)) {
+    throw new Error(`${model} is not in vits-web's PATH_MAP and cannot be fetched by it. See voices.json for what can.`);
+  }
+  const blob = await tts.predict({ text: text.trim(), voiceId: model }, (p) => {
+    if (onProgress && p && p.total) {
+      onProgress({ url: p.url, loaded: p.loaded, total: p.total, share: p.loaded / p.total });
+    }
+  });
+  return new Uint8Array(await blob.arrayBuffer());
+}
+var AZURE_FORMAT = "riff-16khz-16bit-mono-pcm";
+var AZURE_RATE = "-5%";
+var endpoint = (region) => `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
+var voiceList = (region) => `https://${region}.tts.speech.microsoft.com/cognitiveservices/voices/list`;
+function localeOf(name) {
+  const parts = name.split("-");
+  return parts.length >= 3 ? parts.slice(0, 2).join("-") : "de-DE";
+}
+var xml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function buildSsml(text, voice, rate = AZURE_RATE) {
+  return `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${xml(localeOf(voice))}"><voice name="${xml(voice)}"><prosody rate="${xml(rate)}">${xml(text.trim())}</prosody></voice></speak>`;
+}
+async function synthesizeAzure(text, voice, o) {
+  if (!o.key) throw new Error("No Azure key.");
+  const response = await fetch(endpoint(o.region), {
+    method: "POST",
+    headers: {
+      "Ocp-Apim-Subscription-Key": o.key,
+      "Content-Type": "application/ssml+xml",
+      "X-Microsoft-OutputFormat": AZURE_FORMAT
+    },
+    body: buildSsml(text, voice, o.rate ?? AZURE_RATE)
+  });
+  if (!response.ok) {
+    if (response.status === 401) throw new Error(`Azure rejected the key for ${o.region}.`);
+    throw new Error(`Azure said ${response.status}: ${(await response.text()).slice(0, 200)}`);
+  }
+  return new Uint8Array(await response.arrayBuffer());
+}
+async function azureVoices(o) {
+  const response = await fetch(voiceList(o.region), {
+    headers: { "Ocp-Apim-Subscription-Key": o.key }
+  });
+  if (!response.ok) throw new Error(`Azure said ${response.status} to the voice list.`);
+  const want = (o.languages ?? ["de-DE", "en-US"]).map((l) => l.toLowerCase());
+  const all = await response.json();
+  return all.filter((v) => want.some((w) => (v.Locale ?? "").toLowerCase() === w || (v.Locale ?? "").toLowerCase().startsWith(`${w}-`))).map((v) => v.ShortName).sort();
+}
+async function speak(text, vid, options = {}) {
+  if (!text || !text.trim()) throw new Error("Nothing to say.");
+  const parsed = parseVoiceId(vid);
+  const backend = parsed?.backend ?? "piper";
+  const model = parsed?.model ?? vid;
+  if (backend === "piper" && !isAllowed(model, "browser")) {
+    const known = byId(model);
+    throw new Error(
+      !known ? `${model} is not in the catalogue, so it must not be fetched.` : !known.licence.ship ? `${model} may not be shipped: ${known.licence.name}.` : `${model} does not speak in a browser: ${known.browser}.`
+    );
+  }
+  const started = performance.now();
+  if (backend === "azure" && !options.azure) {
+    throw new Error("An azure: voice needs options.azure with a key and a region.");
+  }
+  const raw = backend === "azure" ? await synthesizeAzure(text, model, options.azure) : await synthesizePiper(text, model, options.onProgress);
+  const spoken = performance.now();
+  const result = postprocess(raw, options);
+  return {
+    ...result,
+    voice: vid,
+    rawBytes: raw.length,
+    synthesisMs: Math.round(spoken - started),
+    levellingMs: Math.round(performance.now() - spoken)
+  };
+}
+var asBlob = (wav) => new Blob([wav], { type: "audio/wav" });
 export {
+  AZURE_FORMAT,
+  AZURE_RATE,
   CHECKED,
   LIBRARY,
+  MEASURE_RATE,
   MIRRORS,
+  PIPELINE_VERSION,
+  TARGET_LUFS,
+  TARGET_PEAK_DBTP,
+  TRIM,
   VOICES,
+  asBlob,
   attributionsFor,
+  azureVoices,
+  buildSsml,
   byId,
+  decodeWav,
   displayName,
+  downloaded,
+  encodeWav,
+  fadeEnds,
+  forget,
+  integratedLufs,
   isAllowed,
+  localeOf,
   modelUrls,
+  pad,
   parseVoiceId,
+  postprocess,
   qualityOf,
-  shippable
+  resample,
+  shippable,
+  speak,
+  trim,
+  truePeakDb,
+  usePiper
 };

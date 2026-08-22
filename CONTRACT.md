@@ -20,7 +20,7 @@ from somebody's run, the run is named.
 | Measurement | ITU-R BS.1770-4 integrated loudness, gated: absolute gate at −70 LUFS, relative gate at −10 LU below the ungated mean |
 | Measured at | 48,000 Hz, mono. The filter coefficients are the 48 kHz ones — measuring at another rate is wrong, not approximate |
 | Target | **−16 LUFS** |
-| True-peak ceiling | **−1.5 dBTP**, clamped *before* the final resample; the headroom absorbs resampler overshoot, which is why the ceiling is not 0 dBFS |
+| True-peak ceiling | **−1.5 dBTP**, measured on the **finished** signal at the output rate — after the resample, not before it. Resampling can lift a peak above anything in its input, so a ceiling checked beforehand is one the output can still exceed. Four-times oversampled, per BS.1770-4; the headroom is for inter-sample peaks, which is why it is not 0 dBFS |
 | Gain | **One static gain over the whole file** |
 | Clamp | If the gain would push the peak past the ceiling, reduce the gain. **Never clip** |
 | `LRA` | ffmpeg's filter string carries `LRA=11`. It is inert — `loudnorm` consults it only in dynamic mode, which single short sentences do not enter. **Not a shared parameter**, and an implementation without a dynamic mode needs no answer for it |
