@@ -77,8 +77,16 @@ worth less than no list.
 ### Reading it
 
 ```js
-const shippable = voices.filter(v => v.licence.ship && v.browser === 'ok');
+import { shippable } from '@lautstark/stimmquelle';
+const offerable = shippable('browser');
 ```
+
+`shippable` withholds a voice that owes an attribution until the consumer says
+it renders one — `shippable('browser', { rendersAttribution: true })`. CC-BY is a
+**conditional** permission, and a product showing no notice has not met the
+condition. Defaulting the other way would hand out a conditional permission as
+though it were unconditional, and nothing would ever say so, because a missing
+notice fails exactly as silently as a wrong licence.
 
 ```python
 shippable = [v for v in voices if v["licence"]["ship"] and v["container"] == "ok"]

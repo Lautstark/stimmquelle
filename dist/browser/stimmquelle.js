@@ -298,16 +298,16 @@ var MIRRORS = Object.freeze(voices_default.mirrors);
 var LIBRARY = Object.freeze(voices_default.library);
 var CHECKED = voices_default.checked;
 var QUALITIES = ["x_low", "low", "medium", "high"];
-function shippable(runtime) {
-  return VOICES.filter((v) => v.licence.ship && v[runtime] === "ok");
+function shippable(runtime, offering = {}) {
+  return VOICES.filter((v) => v.licence.ship && v[runtime] === "ok" && (offering.rendersAttribution || !v.licence.attribution));
 }
 function byId(id) {
   const model = parseVoiceId(id)?.model ?? id;
   return VOICES.find((v) => v.id === model);
 }
-function isAllowed(id, runtime) {
+function isAllowed(id, runtime, offering = {}) {
   const voice = byId(id);
-  return !!voice && voice.licence.ship && voice[runtime] === "ok";
+  return !!voice && voice.licence.ship && voice[runtime] === "ok" && (offering.rendersAttribution || !voice.licence.attribution);
 }
 function parseVoiceId(id) {
   const at = id.indexOf(":");
@@ -685,10 +685,10 @@ async function speak(text, vid, options = {}) {
   const parsed = parseVoiceId(vid);
   const backend = parsed?.backend ?? "piper";
   const model = parsed?.model ?? vid;
-  if (backend === "piper" && !isAllowed(model, "browser")) {
+  if (backend === "piper" && !isAllowed(model, "browser", options)) {
     const known = byId(model);
     throw new Error(
-      !known ? `${model} is not in the catalogue, so it must not be fetched.` : !known.licence.ship ? `${model} may not be shipped: ${known.licence.name}.` : `${model} does not speak in a browser: ${known.browser}.`
+      !known ? `${model} is not in the catalogue, so it must not be fetched.` : !known.licence.ship ? `${model} may not be shipped: ${known.licence.name}.` : known.browser !== "ok" ? `${model} does not speak in a browser: ${known.browser}.` : `${model} is ${known.licence.name} and owes an attribution. Render it, then pass { rendersAttribution: true }.`
     );
   }
   const started = performance.now();

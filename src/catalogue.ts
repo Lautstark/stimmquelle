@@ -31,17 +31,41 @@ export const CHECKED: string = catalogue.checked;
 
 const QUALITIES: readonly Quality[] = ['x_low', 'low', 'medium', 'high'];
 
+/** What a consumer is able to honour, which decides what it may be offered. */
+export interface Offering {
+  /**
+   * Whether this product actually displays the licence notices from
+   * `attributionsFor`, wherever the audio ends up.
+   *
+   * **Defaults to false, and that is the whole point of the option.** A CC-BY
+   * voice may be handed on *only* where the attribution is rendered — the
+   * permission is conditional, and a consumer that shows nothing has not met
+   * the condition. Returning such a voice by default would hand out a
+   * conditional permission as though it were unconditional, and the consumer
+   * would never find out, because a missing notice fails exactly as silently as
+   * a wrong licence does.
+   *
+   * Set it true only once the notices are on screen and on whatever gets
+   * printed or exported.
+   */
+  rendersAttribution?: boolean;
+}
+
 /**
  * The voices a product may offer in this runtime.
  *
- * Both halves matter and they are unrelated: `licence.ship` says the model may
- * be handed on at all, the runtime field says it will actually speak there. A
- * voice can pass either and fail the other, and the licence one is the easier to
- * lose because nothing breaks when it is wrong — the voice speaks and the file
- * plays.
+ * Three things have to line up, and they are independent: `licence.ship` says
+ * the model may be handed on at all, the runtime field says it will actually
+ * speak there, and any attribution the licence attaches has to be one this
+ * consumer will render. A voice can pass any of the three and fail another, and
+ * the licence ones are the easier to lose because nothing breaks when they are
+ * wrong — the voice speaks and the file plays.
  */
-export function shippable(runtime: Runtime): readonly Voice[] {
-  return VOICES.filter(v => v.licence.ship && v[runtime] === 'ok');
+export function shippable(runtime: Runtime, offering: Offering = {}): readonly Voice[] {
+  return VOICES.filter(v =>
+    v.licence.ship
+    && v[runtime] === 'ok'
+    && (offering.rendersAttribution || !v.licence.attribution));
 }
 
 /** A voice by id, with or without a backend prefix. */
@@ -55,9 +79,10 @@ export function byId(id: string): Voice | undefined {
  * anything, because an id that reaches Hugging Face unchecked is a licensing
  * decision made by whoever typed it.
  */
-export function isAllowed(id: string, runtime: Runtime): boolean {
+export function isAllowed(id: string, runtime: Runtime, offering: Offering = {}): boolean {
   const voice = byId(id);
-  return !!voice && voice.licence.ship && voice[runtime] === 'ok';
+  return !!voice && voice.licence.ship && voice[runtime] === 'ok'
+    && (offering.rendersAttribution || !voice.licence.attribution);
 }
 
 /** `piper:de_DE-thorsten-medium` -> its two halves. `null` if it has no backend. */

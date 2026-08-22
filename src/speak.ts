@@ -10,7 +10,7 @@
  * is consulted before anything is fetched. An id that reaches Hugging Face
  * unchecked is a licensing decision made by whoever typed it.
  */
-import { isAllowed, byId, parseVoiceId } from './catalogue.js';
+import { isAllowed, byId, parseVoiceId, type Offering } from './catalogue.js';
 import { postprocess, type LevelOptions, type Levelled } from './level.js';
 
 // --- piper -------------------------------------------------------------------
@@ -184,7 +184,7 @@ export async function azureVoices(o: AzureOptions): Promise<string[]> {
  * impossible to confuse, and the type system refuses the flattened version
  * outright, which is how this was noticed.
  */
-export interface SpeakOptions extends LevelOptions {
+export interface SpeakOptions extends LevelOptions, Offering {
   azure?: AzureOptions;
   onProgress?: (p: Progress) => void;
 }
@@ -214,12 +214,14 @@ export async function speak(text: string, vid: string, options: SpeakOptions = {
   const backend = parsed?.backend ?? 'piper';
   const model = parsed?.model ?? vid;
 
-  if (backend === 'piper' && !isAllowed(model, 'browser')) {
+  if (backend === 'piper' && !isAllowed(model, 'browser', options)) {
     const known = byId(model);
     throw new Error(
       !known ? `${model} is not in the catalogue, so it must not be fetched.`
       : !known.licence.ship ? `${model} may not be shipped: ${known.licence.name}.`
-      : `${model} does not speak in a browser: ${known.browser}.`,
+      : known.browser !== 'ok' ? `${model} does not speak in a browser: ${known.browser}.`
+      : `${model} is ${known.licence.name} and owes an attribution. Render it, `
+        + 'then pass { rendersAttribution: true }.',
     );
   }
 

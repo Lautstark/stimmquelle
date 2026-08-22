@@ -54,6 +54,22 @@ describe('the licensing rule', () => {
     }
   });
 
+  it('withholds a voice owing attribution until the consumer says it renders one', () => {
+    // CC-BY is a conditional permission. A consumer that shows no notice has
+    // not met the condition, and would never find out: a missing attribution
+    // fails exactly as silently as a wrong licence. So the default is to
+    // withhold, and asking for it is an explicit claim.
+    const owing = VOICES.filter(v => v.licence.ship && v.licence.attribution);
+    expect(owing.length).toBeGreaterThan(0);
+    for (const v of owing) {
+      expect(shippable('browser').map(x => x.id)).not.toContain(v.id);
+      expect(isAllowed(v.id, 'browser')).toBe(false);
+      expect(isAllowed(v.id, 'browser', { rendersAttribution: true })).toBe(v.browser === 'ok');
+      // And the notice is actually available to render.
+      expect(attributionsFor([v.id])).toHaveLength(1);
+    }
+  });
+
   it('offers nothing unshippable through shippable() or isAllowed()', () => {
     for (const runtime of ['browser', 'container'] as const) {
       for (const v of shippable(runtime)) {
@@ -61,7 +77,8 @@ describe('the licensing rule', () => {
         expect(v[runtime]).toBe('ok');
       }
       for (const v of VOICES.filter(v => !v.licence.ship)) {
-        expect(isAllowed(v.id, runtime), `${v.id} must not be allowed`).toBe(false);
+        expect(isAllowed(v.id, runtime, { rendersAttribution: true }),
+               `${v.id} must not be allowed`).toBe(false);
       }
     }
   });
