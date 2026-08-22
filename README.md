@@ -79,7 +79,7 @@ Three independent questions per voice. Passing one says nothing about the others
 | | |
 | --- | --- |
 | **licence** | May it be handed on? `licence.ship` |
-| **quality** | Does it speak in a browser? Only `medium` and `high` survive `@diffusionstudio/vits-web` — every `low` and `x_low` model dies with `idx=… must be within the inclusive range [-130,129]`, because vits-web phonemizes against one fixed symbol table instead of the `phoneme_id_map` inside each model's own `.onnx.json`. A browser limit only; a container speaks them all |
+| **quality** | Does it speak in a browser? Only `medium` and `high` survive `@diffusionstudio/vits-web` — every `low` and `x_low` model dies with `idx=… must be within the inclusive range [-130,129]`, because vits-web phonemizes against one fixed symbol table instead of the `phoneme_id_map` inside each model's own `.onnx.json`. A fault in the library, not the model — driving piper directly reaches them |
 | **reach** | Can vits-web fetch it? Its `voices()` call advertises 124 voices; its hardcoded `PATH_MAP` holds 119. The other five cannot be downloaded by it |
 
 Every voice anyone has considered is in the file, including the rejected ones,
@@ -94,22 +94,22 @@ worth less than no list.
 
 ```js
 import { shippable } from '@lautstark/stimmquelle';
-const offerable = shippable('browser');
+const offerable = shippable();
 ```
 
 `shippable` withholds a voice that owes an attribution until the consumer says
-it renders one — `shippable('browser', { rendersAttribution: true })`. CC-BY is a
+it renders one — `shippable({ rendersAttribution: true })`. CC-BY is a
 **conditional** permission, and a product showing no notice has not met the
 condition. Defaulting the other way would hand out a conditional permission as
 though it were unconditional, and nothing would ever say so, because a missing
 notice fails exactly as silently as a wrong licence.
 
 ```python
-shippable = [v for v in voices if v["licence"]["ship"] and v["container"] == "ok"]
+shippable = [v for v in voices if v["licence"]["ship"] and v["browser"] == "ok"]
 ```
 
 ```sh
-jq -r '.voices[] | select(.licence.ship and .container=="ok") | .id' voices.json
+jq -r '.voices[] | select(.licence.ship and .browser=="ok") | .id' voices.json
 ```
 
 The third one is the reason this is a file rather than a constant inside a
@@ -120,9 +120,10 @@ module: both Dockerfiles need it, and neither has a language runtime to spare.
 15 voices considered, last read from their sources on **2026-08-22**, against
 `@diffusionstudio/vits-web` 1.0.3.
 
-**Six voices are shippable in a browser** — Thorsten in three flavours,
-`de_DE-mls-medium`, Kristin and LJ Speech. **Eight in a container**, which adds
-Kerstin and John.
+**Six voices are offerable today** — Thorsten in three flavours,
+`de_DE-mls-medium`, Kristin and LJ Speech. Two more are free to ship and wait
+only on vits-web: Kerstin, and `en_US-john-medium`, which the direct-piper path
+below already reaches.
 
 **There is still no German female voice in a browser — but the reason has
 narrowed to one thing.** It used to be that nothing could read the older models.
@@ -337,15 +338,15 @@ npm install github:Lautstark/stimmquelle#<commit-sha>
 ```ts
 import { shippable, isAllowed, attributionsFor, modelUrls } from '@lautstark/stimmquelle';
 
-// What this runtime may offer. Both halves matter and they are unrelated:
-// the licence says it may be handed on, the runtime says it will speak.
-const voices = shippable('browser');
+// What may be offered. Both halves matter and they are unrelated: the licence
+// says it may be handed on, `browser` says vits-web will actually speak it.
+const voices = shippable();
 
 // Before fetching anything. An id that reaches Hugging Face unchecked is a
 // licensing decision made by whoever typed it.
-if (!isAllowed(id, 'browser')) throw new Error(`not an offerable voice: ${id}`);
+if (!isAllowed(id)) throw new Error(`not an offerable voice: ${id}`);
 
-const { onnx, config } = modelUrls(id, 'browser')!;
+const { onnx, config } = modelUrls(id)!;
 
 // Whatever ends up on screen or in an exported file, render what is owed.
 const notices = attributionsFor(usedVoiceIds);

@@ -300,11 +300,12 @@ export interface Synthesised {
  * without anything asking. Being the lower-level of the two doors is not a
  * reason to ask less; it is why it gets used by something that has not asked.
  *
- * The *runtime* half is deliberately not asked, and that is the difference
- * between the two questions rather than a hole in this one. `browser` in the
- * catalogue records what `@diffusionstudio/vits-web` can do, and this path
- * exists precisely because it can do more — it is the route to the `low` and
- * `x_low` voices vits-web cannot reach and to the five its `PATH_MAP` omits.
+ * The *runtime* half is deliberately not asked — `ownsInference` — and that is
+ * the difference between the two questions rather than a hole in this one.
+ * `browser` in the catalogue records what `@diffusionstudio/vits-web` can do,
+ * and this path exists precisely because it can do more: it is the route to the
+ * `low` and `x_low` voices vits-web cannot reach and to the five its `PATH_MAP`
+ * omits.
  */
 export async function synthesize(
   text: string, id: string, progress?: SynthesizeProgress,
@@ -325,11 +326,11 @@ export async function synthesize(
       + 'options here is the easy mistake and this is it being caught.',
     );
   }
-  const refusal = refuse(id, null, options);
+  const refusal = refuse(id, { ...options, ownsInference: true });
   if (refusal) throw new Error(refusal);
   const r = need();
   const voice = byId(id)!;
-  const urls = modelUrls(voice.id, 'browser')!;
+  const urls = modelUrls(voice.id)!;
 
   const configBytes = await cached(`${voice.id}.onnx.json`, urls.config);
   const config = JSON.parse(new TextDecoder().decode(configBytes)) as VoiceConfig;

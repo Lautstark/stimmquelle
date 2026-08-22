@@ -11,16 +11,16 @@
  * next door. See CONTRACT.md for the rules they keep.
  */
 import catalogue from '../voices.json' with { type: 'json' };
-import type { ParsedVoiceId, Quality, Runtime, Voice } from './types.js';
+import type { ParsedVoiceId, Quality, Voice } from './types.js';
 
-export type { Licence, ParsedVoiceId, Quality, Runtime, RuntimeStatus, Voice } from './types.js';
+export type { Licence, ParsedVoiceId, Quality, RuntimeStatus, Voice } from './types.js';
 
 /** Every voice anyone has considered, including the ones that were turned down. */
 export const VOICES: readonly Voice[] = Object.freeze(
   (catalogue.voices as unknown as Voice[]).map(v => Object.freeze(v)),
 );
 
-/** Where the models are fetched from, per runtime. Both carry identical bytes. */
+/** Where the models are fetched from. */
 export const MIRRORS = Object.freeze(catalogue.mirrors);
 
 /** The browser library these answers were established against. */
@@ -49,6 +49,17 @@ export interface Offering {
    * printed or exported.
    */
   rendersAttribution?: boolean;
+
+  /**
+   * Whether this caller drives piper itself, through `usePiperRuntime`.
+   *
+   * It answers the runtime question for itself, so `browser` — which records
+   * what `@diffusionstudio/vits-web` can do — stops applying to it. That is the
+   * whole of what this claims. **It says nothing about the licence**, which is
+   * asked of everything either way, and which is the half that was once lost by
+   * a door that thought being lower-level meant asking less.
+   */
+  ownsInference?: boolean;
 }
 
 /**
@@ -61,11 +72,8 @@ export interface Offering {
  * the licence ones are the easier to lose because nothing breaks when they are
  * wrong — the voice speaks and the file plays.
  */
-export function shippable(runtime: Runtime, offering: Offering = {}): readonly Voice[] {
-  return VOICES.filter(v =>
-    v.licence.ship
-    && v[runtime] === 'ok'
-    && (offering.rendersAttribution || !v.licence.attribution));
+export function shippable(offering: Offering = {}): readonly Voice[] {
+  return VOICES.filter(v => refuse(v.id, offering) === null);
 }
 
 /** A voice by id, with or without a backend prefix. */
@@ -90,7 +98,7 @@ export function byId(id: string): Voice | undefined {
  * a caller that drives piper itself has already answered it for itself. Pass
  * `null` to ask only the licence question — never to skip it.
  */
-export function refuse(id: string, runtime: Runtime | null, offering: Offering = {}): string | null {
+export function refuse(id: string, offering: Offering = {}): string | null {
   const model = parseVoiceId(id)?.model ?? id;
   const voice = byId(model);
   if (!voice) return `${model} is not in the catalogue, so it must not be fetched.`;
@@ -102,8 +110,8 @@ export function refuse(id: string, runtime: Runtime | null, offering: Offering =
     return `${model} is ${voice.licence.name} and owes an attribution. Render it, `
       + 'then pass { rendersAttribution: true }.';
   }
-  if (runtime && voice[runtime] !== 'ok') {
-    return `${model} does not speak in a ${runtime}: ${voice[runtime]}.`;
+  if (!offering.ownsInference && voice.browser !== 'ok') {
+    return `${model} does not speak through vits-web: ${voice.browser}.`;
   }
   return null;
 }
@@ -113,8 +121,8 @@ export function refuse(id: string, runtime: Runtime | null, offering: Offering =
  * anything, because an id that reaches Hugging Face unchecked is a licensing
  * decision made by whoever typed it.
  */
-export function isAllowed(id: string, runtime: Runtime, offering: Offering = {}): boolean {
-  return refuse(id, runtime, offering) === null;
+export function isAllowed(id: string, offering: Offering = {}): boolean {
+  return refuse(id, offering) === null;
 }
 
 /** `piper:de_DE-thorsten-medium` -> its two halves. `null` if it has no backend. */
@@ -183,10 +191,10 @@ function speakerOf(voice: Voice): string {
  * browser library fetches from its own and a container from piper's, and which
  * one a runtime asks is a fact a consumer needs.
  */
-export function modelUrls(id: string, runtime: Runtime): { onnx: string; config: string } | null {
+export function modelUrls(id: string): { onnx: string; config: string } | null {
   const voice = byId(id);
   if (!voice) return null;
-  const base = runtime === 'browser' ? MIRRORS.browser : MIRRORS.container;
+  const base = MIRRORS.browser;
   const dir = `${voice.lang}/${voice.locale}/${speakerOf(voice)}/${voice.quality}`;
   return { onnx: `${base}/${dir}/${voice.id}.onnx`, config: `${base}/${dir}/${voice.id}.onnx.json` };
 }

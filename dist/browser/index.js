@@ -38,7 +38,7 @@ var voices_default = {
     "            against 119 in the map - so five voices are advertised by the library",
     "            and cannot be downloaded by it.",
     "",
-    "'browser' and 'container' say ok, or which question the voice failed for that",
+    "'browser' says ok, or which question the voice failed",
     "runtime. 'licence.ship' is separate from both: a voice can run everywhere and",
     "still not be shippable. Consumers filter on licence.ship AND the runtime they",
     "are.",
@@ -48,7 +48,6 @@ var voices_default = {
     "",
     "  spike      run in a browser in mitreden's docs/spike",
     "  vorlaut    run in a browser from vorlaut's tools/ttscheck.html",
-    "  container  spoken by the piper binary, which is what both images ship",
     "  rule       medium or high and present in PATH_MAP, but never actually spoken",
     "",
     "Every licence and every byte count below was read from the MODEL_CARD and the",
@@ -68,7 +67,6 @@ var voices_default = {
     version: "1.0.3"
   },
   mirrors: {
-    container: "https://huggingface.co/rhasspy/piper-voices/resolve/main",
     browser: "https://huggingface.co/diffusionstudio/piper-voices/resolve/main"
   },
   voices: [
@@ -87,7 +85,6 @@ var voices_default = {
         ship: true
       },
       browser: "ok",
-      container: "ok",
       proof: "spike, vorlaut, container",
       note: "The default in both browser builds, and the only single German voice that speaks in a tab."
     },
@@ -106,7 +103,6 @@ var voices_default = {
         ship: true
       },
       browser: "ok",
-      container: "ok",
       proof: "spike",
       note: "The same person as de_DE-thorsten-medium and nearly twice the download. A picker showing both has to say more than the name."
     },
@@ -125,7 +121,6 @@ var voices_default = {
         ship: true
       },
       browser: "ok",
-      container: "ok",
       proof: "spike",
       note: "Eight speakers, one per emotion, chosen by speaker id. vits-web speaks the first and offers no way to pick another, so in a browser this is one mood and not eight."
     },
@@ -146,7 +141,6 @@ var voices_default = {
         note: "Shippable only where the attribution is actually rendered. Nothing in the family renders one yet, so adding this voice means adding that first."
       },
       browser: "ok",
-      container: "ok",
       proof: "spike",
       note: "A corpus, not a person: 236 speakers in one model and no name a picker can show. The closest thing to a German female voice that runs in a browser at all, which is a statement about the alternatives rather than about this. Listened to rather than assumed: a sentence came back roughly four times longer than Thorsten's. The attribution is not the only thing standing between this and a usable second German voice."
     },
@@ -165,7 +159,6 @@ var voices_default = {
         ship: true
       },
       browser: "ok",
-      container: "ok",
       proof: "spike, vorlaut, container"
     },
     {
@@ -183,7 +176,6 @@ var voices_default = {
         ship: true
       },
       browser: "ok",
-      container: "ok",
       proof: "rule, mitreden",
       note: "The name of a dataset, which reads like a mistake in a list of first names. In mitreden's list since hfc_female came out of it, and recorded in the live page before it was added rather than taken on the strength of the tier."
     },
@@ -202,7 +194,6 @@ var voices_default = {
         ship: true
       },
       browser: "quality",
-      container: "ok",
       proof: "container",
       note: "Free to ship and fine in a container - she is mitreden's container default and is in vorlaut's. Published as low only, so no other file helps. Reading each model's own phoneme_id_map instead of vits-web's fixed table is what would bring her back, and it means owning the phonemizer glue rather than calling a library. Note the 16 kHz: vorlaut's device wants exactly that, so a low voice would need no resampling at all. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. The harness has reported: she speaks, 63 ids, nothing dropped, the ich-Laut at 40 where native piper leaves a bare plosive at 16. Native piper drops the combining mark her map lacks, so it says Ik, m\xF6kte, nikt - which means native is not the oracle here and cannot flip this either way. What is left is a human ear.",
       browser_with_own_ids: "ok by measurement, not yet by ear"
@@ -222,7 +213,6 @@ var voices_default = {
         ship: true
       },
       browser: "reach",
-      container: "ok",
       proof: "container",
       note: "Not missing from the mirror - it is on both, at the byte count above, and both container images fetch it successfully. vits-web cannot have it: predict() looks the id up in PATH_MAP, finds nothing, and asks the mirror for 'undefined.json'. voices() advertises it anyway. mitreden's docs/spike/README.md recorded this as missing files, which was wrong and has been corrected there."
     },
@@ -242,7 +232,6 @@ var voices_default = {
         note: "The MODEL_CARD names no licence. It points at the M-AILABS speech dataset, https://www.caito.de/2019/01/03/the-m-ailabs-speech-dataset/, and says 'See URL'. Unclear is not a yes - this is exactly the case mitreden's README warns about."
       },
       browser: "quality",
-      container: "ok",
       proof: "rule",
       note: "The second of the three German female voices piper publishes. At 20.6 MB it is the only one that is genuinely smaller than a medium model - low is not, despite the name. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. Flipping it is a one-line change once vorlaut's ttscheck harness reports.",
       browser_with_own_ids: "ok by measurement, not yet by ear"
@@ -263,7 +252,6 @@ var voices_default = {
         note: "M-AILABS, 'See URL'. Same as Eva K."
       },
       browser: "quality",
-      container: "ok",
       proof: "rule",
       note: "The third and last German female voice piper publishes. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. Flipping it is a one-line change once vorlaut's ttscheck harness reports.",
       browser_with_own_ids: "ok by measurement, not yet by ear"
@@ -284,7 +272,6 @@ var voices_default = {
         note: "M-AILABS, 'See URL'. Same as Eva K."
       },
       browser: "quality",
-      container: "ok",
       proof: "rule",
       browser_with_own_ids: "ok by measurement, not yet by ear",
       note: " The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. Flipping it is a one-line change once vorlaut's ttscheck harness reports."
@@ -306,7 +293,6 @@ var voices_default = {
         note: "Non-commercial and share-alike. Not a condition a recording made for somebody else's child can carry."
       },
       browser: "ok",
-      container: "ok",
       proof: "spike",
       note: "The voice this file exists for. It speaks perfectly, it was in mitreden's browser build on exactly that basis, and it cannot be shipped. Nothing failed when it was wrong; the file simply played."
     },
@@ -327,7 +313,6 @@ var voices_default = {
         note: "Same dataset, same model card, same answer."
       },
       browser: "ok",
-      container: "ok",
       proof: "rule"
     },
     {
@@ -347,7 +332,6 @@ var voices_default = {
         note: "Non-commercial and share-alike. Not a condition a recording made for somebody else's child can carry."
       },
       browser: "ok",
-      container: "ok",
       proof: "rule",
       note: "Runs, and cannot ship. Listed so that the next person to go looking for an English male voice finds the answer rather than the model card."
     },
@@ -368,7 +352,6 @@ var voices_default = {
         note: "Non-commercial and share-alike. Not a condition a recording made for somebody else's child can carry."
       },
       browser: "ok",
-      container: "ok",
       proof: "rule",
       note: "Same model card as the medium. Both qualities, one licence."
     }
@@ -383,14 +366,14 @@ var MIRRORS = Object.freeze(voices_default.mirrors);
 var LIBRARY = Object.freeze(voices_default.library);
 var CHECKED = voices_default.checked;
 var QUALITIES = ["x_low", "low", "medium", "high"];
-function shippable(runtime2, offering = {}) {
-  return VOICES.filter((v) => v.licence.ship && v[runtime2] === "ok" && (offering.rendersAttribution || !v.licence.attribution));
+function shippable(offering = {}) {
+  return VOICES.filter((v) => refuse(v.id, offering) === null);
 }
 function byId(id) {
   const model = parseVoiceId(id)?.model ?? id;
   return VOICES.find((v) => v.id === model);
 }
-function refuse(id, runtime2, offering = {}) {
+function refuse(id, offering = {}) {
   const model = parseVoiceId(id)?.model ?? id;
   const voice = byId(model);
   if (!voice) return `${model} is not in the catalogue, so it must not be fetched.`;
@@ -398,13 +381,13 @@ function refuse(id, runtime2, offering = {}) {
   if (voice.licence.attribution && !offering.rendersAttribution) {
     return `${model} is ${voice.licence.name} and owes an attribution. Render it, then pass { rendersAttribution: true }.`;
   }
-  if (runtime2 && voice[runtime2] !== "ok") {
-    return `${model} does not speak in a ${runtime2}: ${voice[runtime2]}.`;
+  if (!offering.ownsInference && voice.browser !== "ok") {
+    return `${model} does not speak through vits-web: ${voice.browser}.`;
   }
   return null;
 }
-function isAllowed(id, runtime2, offering = {}) {
-  return refuse(id, runtime2, offering) === null;
+function isAllowed(id, offering = {}) {
+  return refuse(id, offering) === null;
 }
 function parseVoiceId(id) {
   const at = id.indexOf(":");
@@ -434,10 +417,10 @@ function attributionsFor(ids) {
 function speakerOf(voice) {
   return voice.id.slice(voice.locale.length + 1, voice.id.length - voice.quality.length - 1);
 }
-function modelUrls(id, runtime2) {
+function modelUrls(id) {
   const voice = byId(id);
   if (!voice) return null;
-  const base = runtime2 === "browser" ? MIRRORS.browser : MIRRORS.container;
+  const base = MIRRORS.browser;
   const dir = `${voice.lang}/${voice.locale}/${speakerOf(voice)}/${voice.quality}`;
   return { onnx: `${base}/${dir}/${voice.id}.onnx`, config: `${base}/${dir}/${voice.id}.onnx.json` };
 }
@@ -930,11 +913,11 @@ async function synthesize(text, id, progress) {
       "synthesize() takes a progress callback, or { onProgress }. It sits next to speak(), which takes a whole options object \u2014 passing speak's options here is the easy mistake and this is it being caught."
     );
   }
-  const refusal = refuse(id, null, options);
+  const refusal = refuse(id, { ...options, ownsInference: true });
   if (refusal) throw new Error(refusal);
   const r = need();
   const voice = byId(id);
-  const urls = modelUrls(voice.id, "browser");
+  const urls = modelUrls(voice.id);
   const configBytes = await cached(`${voice.id}.onnx.json`, urls.config);
   const config = JSON.parse(new TextDecoder().decode(configBytes));
   const { phonemes, phonemeIds } = await phonemise(text, config.espeak.voice);
@@ -1043,7 +1026,7 @@ async function speak(text, vid, options = {}) {
     throw new Error(`${backend}: is not a backend this package speaks. Use piper: or azure:.`);
   }
   if (backend === "piper") {
-    const refusal = refuse(model, "browser", options);
+    const refusal = refuse(model, options);
     if (refusal) throw new Error(refusal);
   }
   const started = performance.now();
@@ -1053,6 +1036,7 @@ async function speak(text, vid, options = {}) {
       // question again on its own account, and it must get the same answer this
       // call already got rather than a stricter one.
       rendersAttribution: options.rendersAttribution,
+      ownsInference: true,
       onProgress: options.onProgress ? (share) => options.onProgress({ url: model, loaded: share, total: 1, share }) : void 0
     });
     const synthesisedAt = performance.now();

@@ -226,7 +226,7 @@ export async function speak(text: string, vid: string, options: SpeakOptions = {
   }
 
   if (backend === 'piper') {
-    const refusal = refuse(model, 'browser', options);
+    const refusal = refuse(model, options);
     if (refusal) throw new Error(refusal);
   }
 
@@ -245,6 +245,7 @@ export async function speak(text: string, vid: string, options: SpeakOptions = {
       // question again on its own account, and it must get the same answer this
       // call already got rather than a stricter one.
       rendersAttribution: options.rendersAttribution,
+      ownsInference: true,
       onProgress: options.onProgress
         ? share => options.onProgress!({ url: model, loaded: share, total: 1, share })
         : undefined,

@@ -1,10 +1,13 @@
-/** Where a voice is being asked to speak. */
-export type Runtime = 'browser' | 'container';
-
 /**
- * Whether a voice works in a runtime, and if not, which of the two independent
- * obstacles stopped it. Neither has anything to do with the licence, which is a
- * third question again — see `Licence`.
+ * Whether a voice speaks through `@diffusionstudio/vits-web`, and if not, which
+ * of the two independent obstacles stopped it. Neither has anything to do with
+ * the licence, which is a third question again — see `Licence`.
+ *
+ * There used to be a `container` answer beside this one, for the native piper
+ * binary in mitreden's and vorlaut's images. Both images are gone, so the column
+ * described a runtime nobody ran. What it recorded that still matters — that a
+ * `low` model is a fine model and vits-web is the thing at fault — is in each
+ * voice's `note` and in CONTRACT.md §3a, which is where the argument lives.
  */
 export type RuntimeStatus =
   /** Spoken, or reachable and of a quality tier that is known to speak. */
@@ -12,8 +15,9 @@ export type RuntimeStatus =
   /**
    * `low` or `x_low`. @diffusionstudio/vits-web phonemizes against one fixed
    * symbol table instead of the `phoneme_id_map` inside each model's own
-   * `.onnx.json`, so inference dies with an index out of range. A browser limit
-   * only — a container speaks these perfectly.
+   * `.onnx.json`, so inference dies with an index out of range. A fault in the
+   * library, not in the model: driving piper directly speaks these, which is
+   * what `usePiperRuntime` is for.
    */
   | 'quality'
   /**
@@ -69,7 +73,6 @@ export interface Voice {
   readonly speakers: number;
   readonly licence: Licence;
   readonly browser: RuntimeStatus;
-  readonly container: RuntimeStatus;
   /** How the runtime answers were established: spike, vorlaut, container, rule. */
   readonly proof: string;
   readonly note?: string;

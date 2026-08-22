@@ -62,62 +62,63 @@ describe('the licensing rule', () => {
     const owing = VOICES.filter(v => v.licence.ship && v.licence.attribution);
     expect(owing.length).toBeGreaterThan(0);
     for (const v of owing) {
-      expect(shippable('browser').map(x => x.id)).not.toContain(v.id);
-      expect(isAllowed(v.id, 'browser')).toBe(false);
-      expect(isAllowed(v.id, 'browser', { rendersAttribution: true })).toBe(v.browser === 'ok');
+      expect(shippable().map(x => x.id)).not.toContain(v.id);
+      expect(isAllowed(v.id)).toBe(false);
+      expect(isAllowed(v.id, { rendersAttribution: true })).toBe(v.browser === 'ok');
       // And the notice is actually available to render.
       expect(attributionsFor([v.id])).toHaveLength(1);
     }
   });
 
   it('offers nothing unshippable through shippable() or isAllowed()', () => {
-    for (const runtime of ['browser', 'container'] as const) {
-      for (const v of shippable(runtime)) {
-        expect(v.licence.ship).toBe(true);
-        expect(v[runtime]).toBe('ok');
-      }
-      for (const v of VOICES.filter(v => !v.licence.ship)) {
-        expect(isAllowed(v.id, runtime, { rendersAttribution: true }),
-               `${v.id} must not be allowed`).toBe(false);
-      }
+    for (const v of shippable()) {
+      expect(v.licence.ship).toBe(true);
+      expect(v.browser).toBe('ok');
+    }
+    for (const v of VOICES.filter(v => !v.licence.ship)) {
+      expect(isAllowed(v.id, { rendersAttribution: true }),
+             `${v.id} must not be allowed`).toBe(false);
+      expect(isAllowed(v.id, { rendersAttribution: true, ownsInference: true }),
+             `${v.id} must not be allowed to a caller that drives piper either`).toBe(false);
     }
   });
 
-  it('asks the licence question even of a caller that owns its own runtime', () => {
-    // `refuse(id, null, …)` is for a caller that drives piper itself and has
-    // therefore answered the runtime question for itself. It is not a way past
-    // the licence one — which is the whole distinction, and the one that was
-    // lost when synthesize() was given no gate at all.
+  it('asks the licence question even of a caller that drives piper itself', () => {
+    // `ownsInference` says the caller has answered the runtime question for
+    // itself. It is not a way past the licence one — which is the whole
+    // distinction, and the one that was lost when synthesize() had no gate.
+    const owns = { ownsInference: true };
     for (const v of VOICES.filter(v => !v.licence.ship)) {
-      expect(refuse(v.id, null), `${v.id} must be refused with no runtime named`).toBeTruthy();
+      expect(refuse(v.id, owns), `${v.id} must be refused whoever is inferring`).toBeTruthy();
     }
     for (const v of VOICES.filter(v => v.licence.ship && v.licence.attribution)) {
-      expect(refuse(v.id, null)).toMatch(/owes an attribution/);
-      expect(refuse(v.id, null, { rendersAttribution: true })).toBeNull();
+      expect(refuse(v.id, owns)).toMatch(/owes an attribution/);
+      expect(refuse(v.id, { ...owns, rendersAttribution: true })).toBeNull();
     }
   });
 
-  it('lets a runtime-owning caller reach what only vits-web could not', () => {
+  it('lets a caller that drives piper reach what only vits-web could not', () => {
     // The runtime half is genuinely optional and the licence half is not. This
-    // is the pair that says so: Kerstin is CC0 and refused in a browser only
-    // because @diffusionstudio/vits-web cannot phonemise her.
-    expect(refuse('de_DE-kerstin-low', 'browser')).toMatch(/does not speak/);
-    expect(refuse('de_DE-kerstin-low', null)).toBeNull();
+    // is the pair that says so: Kerstin is CC0 and refused only because
+    // @diffusionstudio/vits-web cannot phonemise her.
+    expect(refuse('de_DE-kerstin-low')).toMatch(/does not speak/);
+    expect(refuse('de_DE-kerstin-low', { ownsInference: true })).toBeNull();
   });
 
   it('refuses an id that is not in the catalogue', () => {
     // An id that reaches Hugging Face unchecked is a licensing decision made by
     // whoever typed it.
-    expect(isAllowed('piper:en_GB-someone-medium', 'browser')).toBe(false);
+    expect(isAllowed('piper:en_GB-someone-medium')).toBe(false);
     expect(byId('en_GB-someone-medium')).toBeUndefined();
   });
 });
 
 describe('the runtime answers', () => {
-  it('fails every low and x_low voice in a browser, and none in a container', () => {
+  it('fails every low and x_low voice through vits-web', () => {
+    // The fault is the library's fixed symbol table, not the model — which is
+    // why driving piper directly reaches them. CONTRACT.md §3a.
     for (const v of VOICES.filter(v => v.quality === 'low' || v.quality === 'x_low')) {
-      expect(v.browser, `${v.id} is ${v.quality} and cannot speak in a browser`).toBe('quality');
-      expect(v.container, `${v.id} speaks fine in a container`).toBe('ok');
+      expect(v.browser, `${v.id} is ${v.quality} and vits-web cannot speak it`).toBe('quality');
     }
   });
 
@@ -133,7 +134,7 @@ describe('the runtime answers', () => {
     // Not an accident to be fixed by choosing a different file: piper publishes
     // three and all three are low or x_low. Reading each model's phoneme_id_map
     // would change this, and nothing else will.
-    const german = shippable('browser').filter(v => v.lang === 'de');
+    const german = shippable().filter(v => v.lang === 'de');
     expect(german.every(v => v.gender !== 'female')).toBe(true);
     expect(german.length).toBeGreaterThan(0);
   });
@@ -153,15 +154,14 @@ describe('ids and names', () => {
   });
 
   it('builds both halves of a model url from the id', () => {
-    const u = modelUrls('piper:de_DE-thorsten-medium', 'container')!;
+    const u = modelUrls('piper:de_DE-thorsten-medium')!;
     expect(u.onnx).toBe(
-      `${MIRRORS.container}/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx`);
+      `${MIRRORS.browser}/de/de_DE/thorsten/medium/de_DE-thorsten-medium.onnx`);
     expect(u.config).toBe(`${u.onnx}.json`);
   });
 
-  it('sends a browser to the mirror its library actually fetches from', () => {
-    expect(modelUrls('de_DE-thorsten-medium', 'browser')!.onnx).toContain('diffusionstudio');
-    expect(modelUrls('de_DE-thorsten-medium', 'container')!.onnx).toContain('rhasspy');
+  it('points at the mirror the library actually fetches from', () => {
+    expect(modelUrls('de_DE-thorsten-medium')!.onnx).toContain('diffusionstudio');
   });
 });
 
@@ -169,7 +169,7 @@ describe('the catalogue itself', () => {
   it('says when it was last checked, and against what', () => {
     expect(CHECKED).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(LIBRARY.version).toBeTruthy();
-    expect(MIRRORS.browser).not.toBe(MIRRORS.container);
+    expect(MIRRORS.browser).toMatch(/^https:\/\//);
   });
 
   it('has no duplicate ids', () => {
