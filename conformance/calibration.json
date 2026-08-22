@@ -1,0 +1,28 @@
+{
+  "note": [
+    "The only outside opinion this family has left.",
+    "",
+    "Every other check on the loudness chain measures its output with the same",
+    "function that decided the gain, which is circular: a wrong BS.1770 would",
+    "satisfy all of them. These three were produced by ffmpeg's ebur128 reading",
+    "WAV files the module itself wrote, on the last day mitreden still had a",
+    "Python half with real ffmpeg in it. Neither consumer has one now.",
+    "",
+    "440 Hz is here on purpose. K-weighting is deliberately not flat there, so a",
+    "tone off 1 kHz catches a filter that is merely plausible.",
+    "",
+    "If these drift the fault is in level.ts, not in the numbers. Do not",
+    "re-derive them from the code under test — that is the circle they exist to",
+    "break. conformance/calibrate.sh regenerates them from ffmpeg on any machine",
+    "that has one."
+  ],
+  "measured_with": "ffmpeg ebur128, integrated loudness, on WAV written by encodeWav",
+  "rate": 48000,
+  "seconds": 5,
+  "tolerance_db": 0.1,
+  "tones": [
+    { "hz": 1000, "amplitude": 0.1, "lufs": -23.0 },
+    { "hz": 1000, "amplitude": 0.5, "lufs": -9.0 },
+    { "hz": 440, "amplitude": 0.2, "lufs": -17.7 }
+  ]
+}

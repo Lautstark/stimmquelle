@@ -39,6 +39,14 @@ the worst deviation flips from −2.26 to +2.23 LU — and it was taken out agai
 Consistency beats accuracy on a talker. An implementation that improves on this
 without reading why has made the product worse.
 
+That was written while a container existed to be the oracle. None does now, and
+the decision survives the loss with its reasoning slightly changed: what has to
+match is no longer a second implementation but **every recording this chain has
+already made.** A sentence recorded last year and one recorded today go on the
+same device, and a levelling that got better in between is a device where the
+old ones are quiet. The frozen tones above are what stops "consistent" drifting
+into "consistently wrong".
+
 ### Where ffmpeg and a static gain diverge, and why
 
 ffmpeg's `loudnorm` applies one gain while it can and switches to **compressing**
@@ -227,9 +235,33 @@ once per path measures piper's sampling noise and reports it as a difference
 between implementations. This is the single rule that makes the rest checkable.
 
 **Expected values are checked in as data**, not computed from a live reference
-implementation. vorlaut's container is on a deletion path and mitreden's is not,
-so a differential test would quietly stop working for one consumer and not the
-other.
+implementation — and that is no longer a precaution, it is the only option.
+
+**No consumer has a reference implementation any more.** vorlaut's container is
+gone and mitreden's Python was deleted with `mitreden.py` and eight test files.
+Neither repository can render a file with real ffmpeg and compare. So these
+tests are not a nice-to-have inside this package; they are the entire
+verification story for every product that speaks, and this is the only place
+they can live.
+
+### The ruler itself
+
+Everything above measures output with the same function that decided the gain,
+which is circular: a wrong BS.1770 satisfies all of it. It satisfied mitreden's
+whole audio suite until somebody looked.
+
+`conformance/calibration.json` breaks the circle. Three tones, measured by
+ffmpeg's `ebur128` reading WAV files this package wrote, frozen on the last day
+anything in this family shipped ffmpeg. **440 Hz is in the list on purpose:**
+K-weighting is deliberately not flat there, so a tone off 1 kHz catches a filter
+that is merely plausible.
+
+`conformance/calibrate.sh` regenerates them from ffmpeg on any machine that has
+one, so the origin of the numbers is a procedure rather than a sentence in a
+comment. Confirmed reproducing all three exactly.
+
+A failure there is not a test to adjust. If it drifts, nothing else anywhere is
+in a position to notice.
 
 ---
 
