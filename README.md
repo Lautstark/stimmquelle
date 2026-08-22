@@ -459,12 +459,16 @@ build with no bare imports and the catalogue inlined, loadable from a relative
 path or from behind an import map:
 
 ```
-dist/browser/index.js      the module, 40 kB
-dist/browser/lamejs.js     255 kB, fetched only if something asks for an MP3
+dist/browser/index.js      the module, 45 kB
+dist/browser/lamejs.js     254 kB, fetched only if something asks for an MP3
 ```
 
 Two files rather than one, and the second is the point: `encodeMp3` sits behind
 a dynamic import, so a consumer that only writes WAV never fetches the encoder.
+**Two, and never three.** `--splitting` will hoist shared code into a third file
+the moment anything dynamically imports an internal module, and `index.js`
+becomes a shim pointing at a sibling no vendor script fetches. `check:exports`
+fails if it stops being self-contained.
 That is what makes it safe for the package to own MP3 at all — the alternative
 was every consumer bringing its own, and two copies of the 16-bit rounding free
 to disagree by a bit.

@@ -12,7 +12,7 @@
  * fetches anything.
  */
 import { shippable, type Offering } from './catalogue.js';
-import type { AzureOptions } from './speak.js';
+import { azureVoices, type AzureOptions } from './speak.js';
 
 /** What actually renders a voice. It decides what the other fields can promise. */
 export type VoiceSource = 'piper' | 'azure';
@@ -93,7 +93,6 @@ export function piperVoices(offering: Offering = {}): readonly Offered[] {
  * person who typed the key is the only one who can fix it.
  */
 export async function listVoices(o: ListOptions = {}): Promise<readonly Offered[]> {
-  const { azureVoices } = await import('./speak.js');
   const all = [...piperVoices(o), ...(o.azure ? await azureVoices(o.azure) : [])];
   return all.filter(v => matches(v, o));
 }

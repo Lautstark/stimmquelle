@@ -41,4 +41,20 @@ for (const specifier of ['@lautstark/stimmquelle', '@lautstark/stimmquelle/brows
   }
 }
 
+// The browser build is dropped into a page by hand, file by file, by consumers
+// with no bundler and no package manager. So `index.js` has to be the whole
+// module: esbuild's --splitting will hoist shared code into a sibling chunk the
+// moment anything dynamically imports an internal module, leaving index.js a
+// re-export shim pointing at a file nobody's vendor script knows to fetch. That
+// happened, silently, and shipped.
+const browser = readFileSync(new URL('../dist/browser/index.js', import.meta.url), 'utf8');
+const siblings = [...browser.matchAll(/from\s*"(\.[^"]*)"/g)].map(m => m[1]);
+if (siblings.length) {
+  console.error('dist/browser/index.js is not self-contained; it imports:');
+  for (const s of [...new Set(siblings)]) console.error(`  ${s}`);
+  console.error('Only lamejs.js may be a separate file, and only via import().');
+  process.exit(1);
+}
+
 console.log(`${declared.length} declared entry points, all present and loading.`);
+console.log('dist/browser/index.js is self-contained.');

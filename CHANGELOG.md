@@ -13,6 +13,32 @@ is without anybody having to remember.
 
 ---
 
+## 2.0.2
+
+**The committed browser build had quietly become three files, and only two of
+them are vendored.** Anyone dropping `dist/browser/index.js` into a page by hand
+on 2.0.0 or 2.0.1 has a 3 kB re-export shim importing a `./chunk.js` that their
+vendor script never fetched. It does not run.
+
+`listVoices` reached `azureVoices` through `await import('./speak.js')`, a
+dynamic import of an *internal* module. That is all esbuild's `--splitting`
+needs to hoist every shared byte into a sibling chunk and leave the entry point
+a stub. `speak.ts` only ever took a *type* from `list.ts`, so there was no
+runtime cycle to dodge and nothing to gain: `index.ts` re-exports speak
+statically anyway, so it was in the bundle either way.
+
+It is a static import now, and `index.js` is one self-contained 45 kB file
+again. `check:exports` fails if it ever stops being one.
+
+### What to edit
+
+Nothing, in source. **Re-run your vendor script**, and delete any
+`docs/vendor/chunk.js` or `static/vendor/stimmquelle/chunk.js` it may have left.
+
+No API changed and nothing re-renders.
+
+---
+
 ## 2.0.1
 
 **The package's own entry points, which had never worked.** No behaviour
