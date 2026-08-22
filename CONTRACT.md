@@ -25,7 +25,7 @@ from somebody's run, the run is named.
 | Clamp | If the gain would push the peak past the ceiling, reduce the gain. **Never clip** |
 | `LRA` | ffmpeg's filter string carries `LRA=11`. It is inert — `loudnorm` consults it only in dynamic mode, which single short sentences do not enter. **Not a shared parameter**, and an implementation without a dynamic mode needs no answer for it |
 
-### No compressor, and no limiter
+### No compressor. A true-peak limiter, since v2.2.0
 
 **Deliberate, and the reasoning must survive.** A lookahead true-peak limiter was
 written and measured in vorlaut. It tracks −16 LUFS *better* than ffmpeg does —
@@ -39,13 +39,31 @@ the worst deviation flips from −2.26 to +2.23 LU — and it was taken out agai
 Consistency beats accuracy on a talker. An implementation that improves on this
 without reading why has made the product worse.
 
-That was written while a container existed to be the oracle. None does now, and
-the decision survives the loss with its reasoning slightly changed: what has to
-match is no longer a second implementation but **every recording this chain has
-already made.** A sentence recorded last year and one recorded today go on the
-same device, and a levelling that got better in between is a device where the
-old ones are quiet. The frozen tones above are what stops "consistent" drifting
-into "consistently wrong".
+That was written while a container existed to be the oracle, and it stood after
+the container went by being reread as *every recording this chain has already
+made*. **It no longer stands, and this is what overturned it.**
+
+`de_DE-kerstin-low` came out **3.0 dB quieter** than `de_DE-thorsten-medium`
+through the identical chain, both marked levelled, in the same product. She is
+peakier, the ceiling took her gain back, and she landed at −19.0 LUFS against
+his −16.0. Two voices at two volumes is not a subtler version of the failure
+this document exists to prevent — it *is* that failure, and the rule against a
+limiter was what caused it.
+
+So: **one static gain for the sentence, and the ceiling held by a look-ahead
+true-peak limiter rather than by taking that gain back.** Limiting costs a little
+loudness of its own, so the result is measured again and the shortfall added
+back, up to four passes. Kerstin now lands at −16.2 against Thorsten's −16.0, by
+ffmpeg's own `ebur128`, and her crest factor falls from 17.5 dB to 14.5 — which
+is where his already was. She was the outlier; she is not squashed.
+
+**The consistency argument is honoured, not abandoned.** It said recordings must
+match each other. They now do across voices as well as across days, and the
+price is paid once: `PIPELINE_VERSION` is **2**, so every cached recording
+re-renders rather than sitting under a name claiming to match rules it was not
+made under. The frozen tones above are still what stops "consistent" drifting
+into "consistently wrong", and they were re-run against ffmpeg 9.0.1 on the day
+this changed.
 
 ### Where ffmpeg and a static gain diverge, and why
 

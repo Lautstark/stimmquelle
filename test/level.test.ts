@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  decodeWav, encodeWav, integratedLufs, postprocess, resample, TARGET_LUFS,
-  TARGET_PEAK_DBTP, trim, truePeakDb,
+  decodeWav, encodeWav, integratedLufs, limitTruePeak, postprocess, resample,
+  TARGET_LUFS, TARGET_PEAK_DBTP, trim, truePeakDb,
 } from '../src/index.js';
 
 /**
@@ -48,16 +48,44 @@ describe('levelling', () => {
     }
   });
 
-  it('gives up loudness rather than clipping when the peak would breach', () => {
-    // A quiet sentence with one loud consonant: the gain that would reach the
-    // target would also breach the ceiling, so the ceiling wins and says so.
+  it('holds the ceiling by limiting the peak, not by giving up loudness', () => {
+    // A quiet sentence with one loud consonant. The gain that reaches the target
+    // would breach the ceiling, and the ceiling used to win — the recording came
+    // out quiet and said so with `clamped`. Now the peak moves and the loudness
+    // does not, which is the whole change: CONTRACT.md §1, PIPELINE_VERSION 2.
     const rate = 22050;
     const x = new Float32Array(rate * 2);
     for (let i = 0; i < x.length; i++) x[i] = 0.005 * Math.sin((2 * Math.PI * 220 * i) / rate);
-    for (let i = 0; i < 200; i++) x[rate] = 0.99;
+    for (let i = 0; i < 200; i++) x[rate + i] = 0.99;
     const out = postprocess(encodeWav(x, rate), { rate: 16000 });
-    expect(out.clamped).toBe(true);
+    expect(out.clamped, 'the limiter should have engaged').toBe(true);
+    expect(out.limitedDb).toBeGreaterThan(0);
     expect(out.peakDb).toBeLessThanOrEqual(TARGET_PEAK_DBTP + 0.05);
+    // And it still arrives at the target, which is the part that used to fail.
+    const w = decodeWav(out.wav);
+    const got = integratedLufs(resample(w.samples, w.rate, 48000));
+    expect(Math.abs(got - TARGET_LUFS)).toBeLessThan(1);
+  });
+
+  it('lands a peaky voice and a smooth one at the same loudness', () => {
+    // The regression this replaced, in the small: de_DE-kerstin-low measured
+    // 3.0 dB quieter than de_DE-thorsten-medium through the identical chain,
+    // both marked levelled, because she is peakier and the ceiling took her gain
+    // away. Two voices at two volumes is the failure levelling exists to stop.
+    const rate = 22050, n = rate * 2;
+    const smooth = new Float32Array(n);
+    const peaky = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const s = Math.sin((2 * Math.PI * 220 * i) / rate);
+      smooth[i] = 0.08 * s;
+      // Same body, with transients ten times its height every 200 ms.
+      peaky[i] = 0.08 * s * (i % Math.round(rate * 0.2) < 60 ? 10 : 1);
+    }
+    const measure = (x: Float32Array) => {
+      const w = decodeWav(postprocess(encodeWav(x, rate), { rate: 16000 }).wav);
+      return integratedLufs(resample(w.samples, w.rate, 48000));
+    };
+    expect(Math.abs(measure(smooth) - measure(peaky))).toBeLessThan(0.5);
   });
 
   it('reports what it did, because a levelling nobody can check hides 13 dB', () => {
@@ -232,4 +260,35 @@ describe('the licence gate on speak()', () => {
     const { speak } = await import('../src/index.js');
     return speak('Hallo', vid);
   }
+});
+
+describe('the limiter itself', () => {
+  const rate = 22050;
+
+  it('leaves a signal already under the ceiling completely alone', () => {
+    const x = new Float32Array(rate);
+    for (let i = 0; i < x.length; i++) x[i] = 0.1 * Math.sin((2 * Math.PI * 220 * i) / rate);
+    const { samples, reducedDb } = limitTruePeak(x, rate, TARGET_PEAK_DBTP);
+    expect(reducedDb).toBe(0);
+    for (let i = 0; i < x.length; i++) expect(samples[i]).toBe(x[i]);
+  });
+
+  it('holds the true peak under the ceiling, not just the sample peak', () => {
+    // The peak between two samples is the one that matters, and it is why the
+    // gain is worked out on a four-times oversampled copy. A limiter that only
+    // looked at samples would leave the ceiling breached exactly where a −1.5 dB
+    // ceiling exists to leave room.
+    const x = new Float32Array(rate);
+    for (let i = 0; i < x.length; i++) {
+      x[i] = 0.95 * Math.sin((2 * Math.PI * 4000 * i) / rate + Math.PI / 4);
+    }
+    const { samples } = limitTruePeak(x, rate, TARGET_PEAK_DBTP);
+    expect(truePeakDb(samples, rate)).toBeLessThanOrEqual(TARGET_PEAK_DBTP + 0.05);
+  });
+
+  it('reports how far it pulled anything down', () => {
+    const x = new Float32Array(rate);
+    for (let i = 0; i < x.length; i++) x[i] = 0.99 * Math.sin((2 * Math.PI * 220 * i) / rate);
+    expect(limitTruePeak(x, rate, TARGET_PEAK_DBTP).reducedDb).toBeGreaterThan(1);
+  });
 });

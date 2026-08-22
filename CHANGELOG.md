@@ -13,6 +13,41 @@ is without anybody having to remember.
 
 ---
 
+## 2.2.0
+
+### Every recording re-renders. This is the one that changes how things sound.
+
+**`PIPELINE_VERSION` is 2.** Bump the constant in each consumer's fingerprint and
+let the caches rebuild. Nothing else in this release needs anything.
+
+### The ceiling stopped deciding how loud a voice is
+
+`de_DE-kerstin-low` came out **3.0 dB quieter** than `de_DE-thorsten-medium`
+through the identical chain, both marked levelled, in the same product. She is
+peakier; the ceiling took her gain back and she landed at −19.0 LUFS against his
+−16.0. Two voices at two volumes is the failure levelling exists to prevent.
+
+CONTRACT.md §1 forbade a limiter, on the reasoning that a browser must not level
+better than the container it shared a cache with. There is no container, and the
+rule was costing the thing it was written to protect. So the gain now comes from
+the target and the ceiling is held by a look-ahead true-peak limiter. Limiting
+costs a little loudness of its own, so the result is measured again and the
+shortfall added back, up to four passes.
+
+Kerstin now lands at **−16.2** against Thorsten's **−16.0** by ffmpeg's own
+`ebur128`, and her crest factor falls from 17.5 dB to 14.5 — where his already
+was. She was the outlier, and she is not squashed.
+
+`Levelled.clamped` still exists but means something new: **the limiter engaged**,
+not *the recording came out quiet*. `limitedDb` says by how much. `limitTruePeak`
+is exported for anyone who wants the piece on its own.
+
+Levelling a recording that needs limiting takes about three times as long — one
+extra loudness measurement per make-up pass. It is still milliseconds against
+seconds of synthesis, and untouched for a recording that needs none.
+
+---
+
 ## 2.1.1
 
 **Evidence, not code.** Nothing changed in the chain, the catalogue's answers or

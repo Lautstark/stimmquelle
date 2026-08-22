@@ -44,7 +44,7 @@ export const MEASURE_RATE = 48000;
  * every other constant is: the bundle has no disk. A test ties the two together,
  * because they live in files that cannot read each other.
  */
-export const VERSION = '2.1.1';
+export const VERSION = '2.2.0';
 
 /**
  * Bumped whenever §1 or §2 of the contract changes.
@@ -53,4 +53,4 @@ export const VERSION = '2.1.1';
  * re-render rather than keeping recordings made under the old rules under names
  * claiming to match the new ones.
  */
-export const PIPELINE_VERSION = 1;
+export const PIPELINE_VERSION = 2;

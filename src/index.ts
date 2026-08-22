@@ -17,7 +17,7 @@ export {
   MEASURE_RATE, PIPELINE_VERSION, TARGET_LUFS, TARGET_PEAK_DBTP, TRIM, VERSION,
 } from './contract.js';
 export {
-  decodeWav, encodeWav, fadeEnds, integratedLufs, pad, postprocess, resample,
+  decodeWav, encodeWav, fadeEnds, integratedLufs, limitTruePeak, pad, postprocess, resample,
   toPcm16, trim, truePeakDb,
   type Levelled, type LevelOptions,
 } from './level.js';

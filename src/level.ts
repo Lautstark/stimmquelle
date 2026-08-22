@@ -59,8 +59,18 @@ export interface Levelled {
   /** What the trimmed recording measured before the gain was applied. */
   readonly lufs: number;
   readonly gainDb: number;
-  /** True when the ceiling, not the target, decided the gain. */
+  /**
+   * True when the limiter engaged — the recording had peaks that would have
+   * breached the ceiling at the gain the target asked for.
+   *
+   * It no longer means the recording came out quiet. It used to: the ceiling
+   * took the gain back and the file landed below target, which is how
+   * `de_DE-kerstin-low` ended up 3.0 dB under `de_DE-thorsten-medium`. Now the
+   * peaks move and the loudness does not. `limitedDb` says by how much.
+   */
   readonly clamped: boolean;
+  /** Most the limiter took off any peak, in dB. 0 when it never engaged. */
+  readonly limitedDb: number;
   /** True peak of the finished file, in dBTP. Never above the ceiling. */
   readonly peakDb: number;
 }
@@ -444,6 +454,79 @@ export function truePeakDb(x: Float32Array, rate: number): number {
   return 20 * Math.log10(peak || 1e-12);
 }
 
+// --- Peak limiting -----------------------------------------------------------
+
+/**
+ * How far ahead the gain starts coming down before a peak arrives.
+ *
+ * Long enough that the reduction is a slope rather than a step — a step is a
+ * click — and short enough that it does not audibly duck the syllable before.
+ */
+const LOOKAHEAD_SEC = 0.0015;
+
+/** How long the gain takes to come back. Fast enough not to pump on speech. */
+const RELEASE_SEC = 0.05;
+
+/**
+ * Hold the true peak under a ceiling by moving the gain, not by clipping.
+ *
+ * **This is the thing CONTRACT.md §1 used to forbid**, and the reason it did has
+ * gone. The rule was that a browser must not level *better* than the container,
+ * because two halves of one product speaking into one cache would then disagree
+ * about how loud yesterday's sentence was. There is no container. What replaced
+ * that argument is the one it was always competing with: a static gain pulled
+ * back to clear the ceiling makes a peaky voice quieter than a smooth one, and
+ * `de_DE-kerstin-low` came out **3.0 dB** below `de_DE-thorsten-medium` in the
+ * same product. Two voices at two volumes is the failure levelling exists to
+ * prevent, and it was happening in the name of avoiding a limiter.
+ *
+ * The gain is computed on a four-times oversampled copy so that peaks *between*
+ * samples are caught — the same reason `truePeakDb` oversamples — then reduced
+ * to one value per input sample by taking the smallest, so nothing that happened
+ * between two samples escapes by not being sampled. A running minimum over a
+ * window either side turns that into a slope, and a one-pole release brings it
+ * back. Attack is immediate because the look-ahead has already done it.
+ */
+export function limitTruePeak(
+  x: Float32Array, rate: number, ceilingDb: number,
+): { samples: Float32Array; reducedDb: number } {
+  checkRate(rate, 'the sample rate');
+  const ceiling = Math.pow(10, ceilingDb / 20);
+  const dense = resample(x, rate, rate * 4);
+
+  // The gain each input sample would need for the waveform around it to sit
+  // under the ceiling. 1 means it is already under.
+  const need = new Float32Array(x.length).fill(1);
+  for (let i = 0; i < dense.length; i++) {
+    const a = Math.abs(dense[i]);
+    if (a <= ceiling) continue;
+    const j = Math.min(x.length - 1, Math.floor(i / 4));
+    const g = ceiling / a;
+    if (g < need[j]) need[j] = g;
+  }
+
+  // A window either side, so the reduction arrives as a ramp rather than a step.
+  const look = Math.max(1, Math.round(LOOKAHEAD_SEC * rate));
+  const env = new Float32Array(x.length);
+  for (let i = 0; i < x.length; i++) {
+    let m = 1;
+    const from = Math.max(0, i - look), to = Math.min(x.length - 1, i + look);
+    for (let j = from; j <= to; j++) if (need[j] < m) m = need[j];
+    env[i] = m;
+  }
+
+  const rel = Math.exp(-1 / Math.max(1, RELEASE_SEC * rate));
+  const out = new Float32Array(x.length);
+  let g = 1, lowest = 1;
+  for (let i = 0; i < x.length; i++) {
+    // Down at once — the look-ahead already made that a slope — and back slowly.
+    g = env[i] < g ? env[i] : env[i] + (g - env[i]) * rel;
+    if (g < lowest) lowest = g;
+    out[i] = x[i] * g;
+  }
+  return { samples: out, reducedDb: lowest < 1 ? -20 * Math.log10(lowest) : 0 };
+}
+
 // --- The whole chain ---------------------------------------------------------
 
 /**
@@ -452,14 +535,16 @@ export function truePeakDb(x: Float32Array, rate: number): number {
  * Trim, then the device extras if any, then level — levelling last, so it
  * measures what the trim actually left rather than the silence that went in.
  *
- * The gain is **one static gain for the whole sentence**, pulled back if it
- * would breach the ceiling. That is a clamp and not a limiter, and it is
- * deliberate. A limiter was written and measured: it lands closer to −16 LUFS
- * than ffmpeg does, and that is the argument *against* it. Two halves of one
- * product speak the same sentences into the same cache, and a browser that
- * levels better than the container is a device on which the sentence recorded
- * yesterday is quieter than the one recorded today. The container is the
- * oracle, not the target. CONTRACT.md §1.
+ * The gain is **one static gain for the whole sentence**, and the ceiling is held
+ * by a look-ahead true-peak limiter rather than by taking that gain back.
+ *
+ * It used to be taken back, and the reasoning was that a browser must not level
+ * better than the container because the two shared a cache. There is no
+ * container. What the rule cost while it stood was the thing levelling is for:
+ * a peaky voice came out quieter than a smooth one, `de_DE-kerstin-low` landing
+ * 3.0 dB under `de_DE-thorsten-medium` in the same product with both marked as
+ * levelled. CONTRACT.md §1, and PIPELINE_VERSION 2 because it changes what every
+ * recording sounds like.
  *
  * Numbers come back with the bytes, because a levelling nobody can check is how
  * 13 dB of error in ffmpeg.wasm stayed invisible for three years.
@@ -487,15 +572,30 @@ export function postprocess(wavBytes: Uint8Array, o: LevelOptions = {}): Levelle
   // The peak is measured on the finished signal, after the resample rather than
   // before it: resampling can push a peak higher than anything in the input,
   // and a ceiling checked beforehand would be a ceiling the output can exceed.
+  // The target decides the gain, and the ceiling is held by moving the gain
+  // around the peaks that breach it rather than by taking the whole gain back.
+  //
+  // Limiting costs a little loudness of its own — it is a gain reduction, and
+  // some of it lands on signal that counts towards the measurement — so the
+  // answer is measured again and the shortfall added back. On a voice needing no
+  // limiting the first pass is exact and the loop leaves after one measurement.
+  // On de_DE-kerstin-low, which needs 4 dB of it, one pass alone still left her
+  // 1.3 dB short of Thorsten, which is most of the fault this replaced.
   let gainDb = TARGET_LUFS - lufs;
-  const peakDb = truePeakDb(out, rate);
-  const headroom = TARGET_PEAK_DBTP - peakDb;
-  const clamped = gainDb > headroom;
-  if (clamped) gainDb = headroom;
-
-  const gain = Math.pow(10, gainDb / 20);
-  const levelled = new Float32Array(out.length);
-  for (let i = 0; i < out.length; i++) levelled[i] = out[i] * gain;
+  let levelled = out, reducedDb = 0;
+  for (let pass = 0; pass < 4; pass++) {
+    const gain = Math.pow(10, gainDb / 20);
+    const raised = new Float32Array(out.length);
+    for (let i = 0; i < out.length; i++) raised[i] = out[i] * gain;
+    const limited = limitTruePeak(raised, rate, TARGET_PEAK_DBTP);
+    levelled = limited.samples;
+    reducedDb = limited.reducedDb;
+    if (!reducedDb) break;                                   // nothing was touched
+    const got = integratedLufs(resample(levelled, rate, MEASURE_RATE));
+    const short = TARGET_LUFS - got;
+    if (!Number.isFinite(short) || Math.abs(short) < 0.1) break;
+    gainDb += short;
+  }
 
   return {
     wav: encodeWav(levelled, rate),
@@ -504,7 +604,8 @@ export function postprocess(wavBytes: Uint8Array, o: LevelOptions = {}): Levelle
     seconds: levelled.length / rate,
     lufs,
     gainDb,
-    clamped,
-    peakDb: peakDb + gainDb,
+    clamped: reducedDb > 0,
+    limitedDb: reducedDb,
+    peakDb: truePeakDb(levelled, rate),
   };
 }

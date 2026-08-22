@@ -284,9 +284,18 @@ that it is checked against the first. Web Audio would have done the decoding and
 resampling in a line each and made that check impossible.
 
 The defaults are the contract's: trim at −50 dB keeping 50 ms, target −16 LUFS,
-ceiling −1.5 dBTP, **no compression and no limiter**. A device may add a fade and
-a tail pad — `fadeSec`, `padSec` — which do not change measured loudness and are
-documented extras rather than part of the contract.
+ceiling −1.5 dBTP, no compression. A device may add a fade and a tail pad —
+`fadeSec`, `padSec` — which do not change measured loudness and are documented
+extras rather than part of the contract.
+
+**The ceiling is held by a limiter, not by giving up loudness**, and that is a
+reversal. §1 forbade one for years on the grounds that a browser must not level
+better than the container it shared a cache with. There is no container, and the
+rule was costing exactly what it was written to protect: `de_DE-kerstin-low` came
+out **3.0 dB quieter** than `de_DE-thorsten-medium` through the same chain, both
+marked levelled, because she is peakier and the ceiling took her gain back. Two
+voices at two volumes in one product. She now lands at −16.2 against his −16.0 by
+ffmpeg's own `ebur128`, with her crest factor falling to where his already was.
 
 A sample rate must be a **positive finite number**, and a caller holding one as a
 string parses it first. `postprocess(wav, { rate: '-5%' })` was reachable — it is
@@ -530,7 +539,7 @@ a consumer writes rather than by a relative path. It runs after the build
 because it reads `dist/`, and it exists because a package cannot see its own
 entry points from the inside: all of 2.0.0's were wrong and nothing noticed.
 
-121 tests. They are the rules made executable rather than a description of the
+125 tests. They are the rules made executable rather than a description of the
 module. Documentation is the weakest form of enforcement: all three of the prose
 statements of the licensing rule were correct on the day a CC BY-NC-SA voice
 reached a browser build, and the rule was correct in this README on the day
