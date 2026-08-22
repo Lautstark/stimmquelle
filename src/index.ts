@@ -22,6 +22,7 @@ export {
   type Levelled, type LevelOptions,
 } from './level.js';
 export { DEFAULT_BITRATE, encodeMp3 } from './mp3.js';
+export { remapPhonemeIds, type PhonemeIdMap, type Remapped } from './phonemes.js';
 export {
   asBlob, AZURE_FORMAT, AZURE_RATE, azureVoices, buildSsml, downloaded, forget,
   localeOf, speak, usePiper,

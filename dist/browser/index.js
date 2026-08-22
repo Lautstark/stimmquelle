@@ -53,11 +53,16 @@ var voices_default = {
     "",
     "Every licence and every byte count below was read from the MODEL_CARD and the",
     "mirror on the date in 'checked', not copied from anywhere. Both mirrors were",
-    "compared and carry identical bytes for every entry."
+    "compared and carry identical bytes for every entry.",
+    "",
+    "Roughly a third of the English medium and high voices piper publishes cannot be handed on, and none of them says so anywhere a file name would show it. hfc_female, hfc_male and ryan in both qualities are all CC BY-NC-SA. That is the reason the rejected entries are in this file rather than left out of it."
   ],
   revised: "2026-08-22",
   checked: "2026-08-22",
-  library: { name: "@diffusionstudio/vits-web", version: "1.0.3" },
+  library: {
+    name: "@diffusionstudio/vits-web",
+    version: "1.0.3"
+  },
   mirrors: {
     container: "https://huggingface.co/rhasspy/piper-voices/resolve/main",
     browser: "https://huggingface.co/diffusionstudio/piper-voices/resolve/main"
@@ -73,7 +78,10 @@ var voices_default = {
       bytes: 63201294,
       sampleRate: 22050,
       speakers: 1,
-      licence: { name: "CC0", ship: true },
+      licence: {
+        name: "CC0",
+        ship: true
+      },
       browser: "ok",
       container: "ok",
       proof: "spike, vorlaut, container",
@@ -89,7 +97,10 @@ var voices_default = {
       bytes: 113895201,
       sampleRate: 22050,
       speakers: 1,
-      licence: { name: "CC0", ship: true },
+      licence: {
+        name: "CC0",
+        ship: true
+      },
       browser: "ok",
       container: "ok",
       proof: "spike",
@@ -105,7 +116,10 @@ var voices_default = {
       bytes: 76745905,
       sampleRate: 22050,
       speakers: 8,
-      licence: { name: "CC0", ship: true },
+      licence: {
+        name: "CC0",
+        ship: true
+      },
       browser: "ok",
       container: "ok",
       proof: "spike",
@@ -130,7 +144,7 @@ var voices_default = {
       browser: "ok",
       container: "ok",
       proof: "spike",
-      note: "A corpus, not a person: 236 speakers in one model and no name a picker can show. The closest thing to a German female voice that runs in a browser at all, which is a statement about the alternatives rather than about this."
+      note: "A corpus, not a person: 236 speakers in one model and no name a picker can show. The closest thing to a German female voice that runs in a browser at all, which is a statement about the alternatives rather than about this. Listened to rather than assumed: a sentence came back roughly four times longer than Thorsten's. The attribution is not the only thing standing between this and a usable second German voice."
     },
     {
       id: "en_US-kristin-medium",
@@ -142,7 +156,10 @@ var voices_default = {
       bytes: 63531379,
       sampleRate: 22050,
       speakers: 1,
-      licence: { name: "public domain", ship: true },
+      licence: {
+        name: "public domain",
+        ship: true
+      },
       browser: "ok",
       container: "ok",
       proof: "spike, vorlaut, container"
@@ -157,11 +174,14 @@ var voices_default = {
       bytes: 63531379,
       sampleRate: 22050,
       speakers: 1,
-      licence: { name: "public domain", ship: true },
+      licence: {
+        name: "public domain",
+        ship: true
+      },
       browser: "ok",
       container: "ok",
-      proof: "rule",
-      note: "The name of a dataset, which reads like a mistake in a list of first names. Here as the free English fallback if Kristin ever goes, not as something to offer."
+      proof: "rule, mitreden",
+      note: "The name of a dataset, which reads like a mistake in a list of first names. In mitreden's list since hfc_female came out of it, and recorded in the live page before it was added rather than taken on the strength of the tier."
     },
     {
       id: "de_DE-kerstin-low",
@@ -173,7 +193,10 @@ var voices_default = {
       bytes: 63104526,
       sampleRate: 16e3,
       speakers: 1,
-      licence: { name: "CC0", ship: true },
+      licence: {
+        name: "CC0",
+        ship: true
+      },
       browser: "quality",
       container: "ok",
       proof: "container",
@@ -189,7 +212,10 @@ var voices_default = {
       bytes: 63531379,
       sampleRate: 22050,
       speakers: 1,
-      licence: { name: "public domain", ship: true },
+      licence: {
+        name: "public domain",
+        ship: true
+      },
       browser: "reach",
       container: "ok",
       proof: "container",
@@ -225,7 +251,11 @@ var voices_default = {
       bytes: 63104526,
       sampleRate: 16e3,
       speakers: 1,
-      licence: { name: "unclear", ship: false, note: "M-AILABS, 'See URL'. Same as Eva K." },
+      licence: {
+        name: "unclear",
+        ship: false,
+        note: "M-AILABS, 'See URL'. Same as Eva K."
+      },
       browser: "quality",
       container: "ok",
       proof: "rule",
@@ -241,7 +271,11 @@ var voices_default = {
       bytes: 63104526,
       sampleRate: 16e3,
       speakers: 1,
-      licence: { name: "unclear", ship: false, note: "M-AILABS, 'See URL'. Same as Eva K." },
+      licence: {
+        name: "unclear",
+        ship: false,
+        note: "M-AILABS, 'See URL'. Same as Eva K."
+      },
       browser: "quality",
       container: "ok",
       proof: "rule"
@@ -286,6 +320,48 @@ var voices_default = {
       browser: "ok",
       container: "ok",
       proof: "rule"
+    },
+    {
+      id: "en_US-ryan-medium",
+      name: "Ryan",
+      lang: "en",
+      locale: "en_US",
+      gender: "male",
+      quality: "medium",
+      bytes: 63201294,
+      sampleRate: 22050,
+      speakers: 1,
+      licence: {
+        name: "CC BY-NC-SA 4.0",
+        ship: false,
+        url: "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en",
+        note: "Non-commercial and share-alike. Not a condition a recording made for somebody else's child can carry."
+      },
+      browser: "ok",
+      container: "ok",
+      proof: "rule",
+      note: "Runs, and cannot ship. Listed so that the next person to go looking for an English male voice finds the answer rather than the model card."
+    },
+    {
+      id: "en_US-ryan-high",
+      name: "Ryan",
+      lang: "en",
+      locale: "en_US",
+      gender: "male",
+      quality: "high",
+      bytes: 120786792,
+      sampleRate: 22050,
+      speakers: 1,
+      licence: {
+        name: "CC BY-NC-SA 4.0",
+        ship: false,
+        url: "https://creativecommons.org/licenses/by-nc-sa/4.0/deed.en",
+        note: "Non-commercial and share-alike. Not a condition a recording made for somebody else's child can carry."
+      },
+      browser: "ok",
+      container: "ok",
+      proof: "rule",
+      note: "Same model card as the medium. Both qualities, one licence."
     }
   ]
 };
@@ -644,6 +720,54 @@ async function encodeMp3(samples, rate, bitrate = DEFAULT_BITRATE) {
   return out;
 }
 
+// src/phonemes.ts
+function remapPhonemeIds(phonemes, phonemeIds, map) {
+  const bos = map["^"]?.[0], eos = map["$"]?.[0], pad2 = map["_"]?.[0];
+  if (bos === void 0 || eos === void 0 || pad2 === void 0) {
+    throw new Error("phoneme_id_map is missing '^', '$' or '_'");
+  }
+  const structural = /* @__PURE__ */ new Set([bos, eos, pad2]);
+  const out = [];
+  const dropped = [];
+  let k = 0, exact = true, dropPad = false;
+  for (const id of phonemeIds) {
+    if (structural.has(id)) {
+      if (dropPad && id === pad2) {
+        dropPad = false;
+        continue;
+      }
+      out.push(id);
+      continue;
+    }
+    const phoneme = phonemes[k++];
+    if (phoneme === void 0) {
+      out.push(id);
+      continue;
+    }
+    if (map[phoneme]) {
+      out.push(...map[phoneme]);
+      continue;
+    }
+    const previous = phonemes[k - 2];
+    const composed = previous === void 0 ? null : (previous + phoneme).normalize("NFC");
+    if (composed && [...composed].length === 1 && map[composed]) {
+      for (let i = out.length - 1; i >= 0; i--) {
+        if (!structural.has(out[i])) {
+          out.splice(i, 1, ...map[composed]);
+          break;
+        }
+      }
+      exact = false;
+      dropPad = true;
+      continue;
+    }
+    dropped.push(phoneme);
+    exact = false;
+    dropPad = true;
+  }
+  return { ids: out, dropped, exact };
+}
+
 // src/speak.ts
 var loadPiper = null;
 function usePiper(load2) {
@@ -773,6 +897,7 @@ export {
   parseVoiceId,
   postprocess,
   qualityOf,
+  remapPhonemeIds,
   resample,
   shippable,
   speak,
