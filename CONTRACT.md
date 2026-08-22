@@ -150,6 +150,52 @@ between a container and a page; recordings are made again on the other side.**
 
 ---
 
+## 3a. Phoneme ids come from the model, not from the phonemizer
+
+A model's `.onnx.json` carries the symbol table it was trained against, as
+`phoneme_id_map`. The phonemizer has its own, newer and larger. Feeding the
+phonemizer's ids to an older model is what breaks every `low` and `x_low` voice,
+and with them the only German female voices piper publishes.
+
+The difference is **one spelling, not missing sounds**, and the evidence is that
+the older map is a strict subset of the newer:
+
+```
+thorsten  152 entries   U+0327 -> [140]   ç -> [40]
+kerstin   130 entries   U+0327 -> absent  ç -> [40]
+kerstin's map is a strict subset of thorsten's: true
+```
+
+The phonemizer writes the ich-Laut decomposed — `c` then U+0327 COMBINING
+CEDILLA, as two phonemes. Newer maps carry that combining mark as a symbol in
+its own right at id 140, outside Kerstin's `num_symbols` of 130. Her map has the
+precomposed `ç` at 40. Both know the sound. Her ids run 0 to 129, which is
+literally the range the failure reports.
+
+So: **look each phoneme up as emitted, and compose it onto the one before only
+where the model has never heard of that form.** A model whose map holds the
+combining mark is untouched — required, because those voices already speak and
+their recordings are named by fingerprints that must not move.
+
+**Keep the phonemizer's own ids for their structure.** They carry sentence
+splitting that the flat `phonemes` array does not, and rebuilding from phonemes
+alone merges sentences and changes prosody, silently. When two slots become one,
+the pad between them goes with it: piper puts exactly one between phonemes, and
+two is a token no model saw in training — it arrives as a pause, not an error.
+
+## 9. Sample rates
+
+A rate is a **positive finite number**, and a caller that has one as a string
+parses it first. Not pedantry: `postprocess(wav, { rate: '-5%' })` used to
+return a 44-byte WAV — a valid header with no audio under it, which plays as
+silence and reports nothing. A numeric string like `'44100'` worked by coercion,
+so whether a caller got a file, a crash or silence depended on which string.
+
+Omitting the rate and passing nothing are different things. Omitted takes the
+default; `null` is refused, because a config field that came out of JSON as null
+is a caller who meant to say something and did not.
+
+
 ## 4. Voice ids
 
 `<backend>:<model>`
