@@ -65,6 +65,30 @@ export interface Levelled {
   readonly peakDb: number;
 }
 
+/**
+ * A sample rate has to be a positive finite number, and nothing else.
+ *
+ * TypeScript says so, and TypeScript is not there at run time: a rate read out
+ * of JSON, a form field, or a settings object arrives as a string and sails
+ * past. That is not hypothetical — `postprocess(wav, { rate: '-5%' })` was
+ * reachable in vorlaut by passing Azure's prosody rate where the sample rate
+ * goes, and it did not throw. It returned a **44 byte WAV**: a valid header
+ * with no audio under it, which plays as silence and reports nothing.
+ *
+ * A numeric string like '44100' happens to work by coercion, which is worse
+ * than either extreme — it means the failure depends on which string. So the
+ * check is on the type as well as the value, and a caller reading a rate from
+ * somewhere untyped has to parse it. vorlaut refuses the same set.
+ */
+function checkRate(rate: unknown, what: string): asserts rate is number {
+  if (typeof rate !== 'number' || !Number.isFinite(rate) || rate <= 0) {
+    throw new TypeError(
+      `${what} must be a positive finite number, not ${JSON.stringify(rate)}. `
+      + 'A rate that arrived as a string needs parsing first.',
+    );
+  }
+}
+
 // --- WAV in ------------------------------------------------------------------
 
 const magic = (view: DataView, at: number): string =>
@@ -149,6 +173,7 @@ export function toPcm16(samples: Float32Array): Int16Array {
 
 /** 16 bit PCM, one channel, the given rate. */
 export function encodeWav(samples: Float32Array, rate: number): Uint8Array {
+  checkRate(rate, 'the sample rate');
   const bytes = new Uint8Array(44 + samples.length * 2);
   const view = new DataView(bytes.buffer);
   const text = (at: number, s: string) => {
@@ -256,6 +281,8 @@ function kernels(inRate: number, outRate: number): Kernels | null {
  * as noise, and it is the loud consonants that get folded.
  */
 export function resample(x: Float32Array, inRate: number, outRate: number): Float32Array {
+  checkRate(inRate, 'the input rate');
+  checkRate(outRate, 'the output rate');
   if (inRate === outRate || x.length === 0) return x;
   const outLen = Math.max(1, Math.round((x.length * outRate) / inRate));
   const y = new Float32Array(outLen);
@@ -435,7 +462,12 @@ export function truePeakDb(x: Float32Array, rate: number): number {
  * 13 dB of error in ffmpeg.wasm stayed invisible for three years.
  */
 export function postprocess(wavBytes: Uint8Array, o: LevelOptions = {}): Levelled {
-  const rate = o.rate ?? 44100;
+  // `?? 44100` would be wrong here: it treats an explicit null as "not
+  // specified" and quietly hands back 44.1 kHz. A field that came out of JSON
+  // as null is a caller who meant to say something and did not, so leaving it
+  // out and passing nothing are kept apart.
+  const rate = o.rate === undefined ? 44100 : o.rate;
+  checkRate(rate, 'the output rate');
   const { samples, rate: inRate } = decodeWav(wavBytes);
 
   let shaped = trim(samples, inRate, o);

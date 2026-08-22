@@ -433,6 +433,13 @@ var MEASURE_RATE = 48e3;
 var PIPELINE_VERSION = 1;
 
 // src/level.ts
+function checkRate(rate, what) {
+  if (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) {
+    throw new TypeError(
+      `${what} must be a positive finite number, not ${JSON.stringify(rate)}. A rate that arrived as a string needs parsing first.`
+    );
+  }
+}
 var magic = (view, at) => String.fromCharCode(
   view.getUint8(at),
   view.getUint8(at + 1),
@@ -487,6 +494,7 @@ function toPcm16(samples) {
   return pcm;
 }
 function encodeWav(samples, rate) {
+  checkRate(rate, "the sample rate");
   const bytes = new Uint8Array(44 + samples.length * 2);
   const view = new DataView(bytes.buffer);
   const text = (at, s) => {
@@ -549,6 +557,8 @@ function kernels(inRate, outRate) {
   return built;
 }
 function resample(x, inRate, outRate) {
+  checkRate(inRate, "the input rate");
+  checkRate(outRate, "the output rate");
   if (inRate === outRate || x.length === 0) return x;
   const outLen = Math.max(1, Math.round(x.length * outRate / inRate));
   const y = new Float32Array(outLen);
@@ -667,7 +677,8 @@ function truePeakDb(x, rate) {
   return 20 * Math.log10(peak || 1e-12);
 }
 function postprocess(wavBytes, o = {}) {
-  const rate = o.rate ?? 44100;
+  const rate = o.rate === void 0 ? 44100 : o.rate;
+  checkRate(rate, "the output rate");
   const { samples, rate: inRate } = decodeWav(wavBytes);
   let shaped = trim(samples, inRate, o);
   if (o.fadeSec) shaped = fadeEnds(shaped, inRate, o.fadeSec);
