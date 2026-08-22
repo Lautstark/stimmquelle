@@ -328,6 +328,14 @@ tests are not a nice-to-have inside this package; they are the entire
 verification story for every product that speaks, and this is the only place
 they can live.
 
+A *developer machine* is another matter, and `conformance/calibrate.sh` exists
+for exactly that. Run on 2026-08-22 against ffmpeg 9.0.1, all five tones still
+agreed to the tenth of a decibel ffmpeg prints — the first evidence since they
+were frozen that they are a live check rather than archaeology. On the same day a
+real recording came out of the whole chain at **−16.0 LUFS** by ebur128 against a
+target of −16. Neither number is reachable in CI, which is why they are written
+into `calibration.json` under `verified` rather than asserted anywhere.
+
 ### The ruler itself
 
 Everything above measures output with the same function that decided the gain,

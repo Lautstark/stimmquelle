@@ -137,5 +137,10 @@
     ]
    }
   ]
- }
+ },
+ "verified": [
+  "2026-08-22, ffmpeg 9.0.1 on a developer Mac: all five tones still agree to the tenth of a decibel ffmpeg prints. The references were frozen on a much older ffmpeg, so this is the first evidence they are a live check rather than archaeology - both that this chain has not drifted and that ebur128 has not.",
+  "Measured on the same day, on a real recording rather than tones: de_DE-thorsten-medium through the whole chain - trim, level, resample to 44.1 kHz, 192 kbps MP3 - reads -16.0 LUFS to ffmpeg's own ebur128, against a target of -16. The MP3 costs 0.2 LUFS and takes about a decibel off every band uniformly, damaging none of them.",
+  "Listened to on the same day, raw model output against the finished file: indistinguishable apart from level. The chain is not what makes a browser recording sound worse than a container one - that was the voice. See voices.json on de_DE-kerstin-low, which is what the container defaulted to."
+ ]
 }
