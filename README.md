@@ -141,20 +141,73 @@ The implementations follow, in this order:
 reading 16 kHz WAV never calls. The package returns levelled PCM and its sample
 rate; the consumer encodes.
 
-## Consuming it, once there is code
+## Using it
 
-`voices.json` and `CONTRACT.md` are vendored — copied in, pinned by commit,
-refreshed deliberately. There is nothing to install.
+**There is nothing to install, and there is no registry publish.** Same as
+bildquelle: this is consumed straight from GitHub and pinned by commit, so a
+consumer that has not run an update is byte-for-byte on a known version and
+nobody has to trust a version range.
 
-For the code, when it arrives, the same two routes bildquelle uses:
+Today that means one file: **copy `voices.json` in and pin where it came from.**
+It is 6 KB of JSON, every consumer already has something that can read JSON, and
+a copy that records its source commit is a vendored dependency rather than a
+duplicate.
+
+```
+https://raw.githubusercontent.com/Lautstark/stimmquelle/<commit-sha>/voices.json
+```
+
+Alongside the copy, a `VENDORED.md` — or a line in an existing lock file —
+holding the commit it came from and the command that refreshes it. Prose is
+enough; it carries the same facts a lock entry would.
+
+### The four consumers, concretely
+
+**A container image.** `mitreden/Dockerfile` and `vorlaut/Dockerfile` each
+hardcode the same four voice paths in a shell loop. Both replace that with the
+pinned file and derive the paths from it. Neither image gains a dependency —
+`python:3.12-slim` already has Python, so no `jq` is needed:
+
+```sh
+ARG STIMMQUELLE=<commit-sha>
+ADD https://raw.githubusercontent.com/Lautstark/stimmquelle/${STIMMQUELLE}/voices.json /voices.json
+RUN python3 -c "import json;       print('\n'.join(v['id'] for v in json.load(open('/voices.json'))['voices']             if v['licence']['ship'] and v['container'] == 'ok'))" > /wanted.txt
+```
+
+The `ARG` is the pin, and bumping it is a visible one-line diff.
+
+**A Python module.** `tts.py` reads the same file instead of holding
+`VOICE_CATALOGUE`. Standard library only — `json.load`, and a filter on
+`licence.ship`.
+
+**A page with a vendoring tool.** mitreden's `tools/vendor.py` already fetches
+third-party files, pins them by sha256 in `tools/vendor.lock.json` and serves
+them same-origin. `voices.json` becomes one more entry in its `CODE` list, lands
+in `docs/app/vendor/`, and `--check` verifies it like everything else.
+
+**A page with an import map.** vorlaut vendors to
+`static/vendor/stimmquelle/voices.json` with a `VENDORED.md` beside it, the same
+shape bildquelle is vendored in.
+
+### When there is code
+
+The same two routes, because the two consumers are shaped differently and
+neither should have to change to suit the other:
 
 ```
 npm install github:Lautstark/stimmquelle#<commit-sha>
 ```
 
-and, for a repository with no bundler, a committed self-contained ESM build with
-no bare imports, dropped into `static/vendor/` or fetched by a `vendor.py` and
-pinned by sha256.
+for anything with a bundler — and for a repository with no bundler, a
+**committed** self-contained ESM build with no bare imports, dropped into
+`static/vendor/` or fetched by a `vendor.py` and pinned by sha256. Committed
+rather than built by `prepare`, because a consumer with no package manager cannot
+run `prepare`.
+
+The Python module is one stdlib-only file, so it is `pip install` from a git
+commit for a repository that has a `requirements.txt`, and a vendored copy for
+one that does not. mitreden's container has no pip dependencies at all and is not
+getting one for this.
 
 ## Licence
 
