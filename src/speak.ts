@@ -11,7 +11,8 @@
  * unchecked is a licensing decision made by whoever typed it.
  */
 import { isAllowed, byId, parseVoiceId, type Offering } from './catalogue.js';
-import { postprocess, type LevelOptions, type Levelled } from './level.js';
+import { encodeWav, postprocess, type LevelOptions, type Levelled } from './level.js';
+import { hasPiperRuntime, synthesize } from './synthesize.js';
 
 // --- piper -------------------------------------------------------------------
 
@@ -226,6 +227,29 @@ export async function speak(text: string, vid: string, options: SpeakOptions = {
   }
 
   const started = performance.now();
+  // The path that owns the inference, when a consumer has configured one. It is
+  // the only one that can reach a low or x_low voice, because those need ids
+  // from the model's own table and vits-web's predict() never exposes the seam.
+  //
+  // Opt-in rather than the default, so that refreshing the vendored copy does
+  // not change how anything speaks. A consumer switches when it is ready, and
+  // for the voices that already worked the ids are identical either way —
+  // asserted in test/phonemes.test.ts, which is what makes the switch free.
+  if (backend === 'piper' && hasPiperRuntime()) {
+    const spoken = await synthesize(text, model, options.onProgress
+      ? share => options.onProgress!({ url: model, loaded: share, total: 1, share })
+      : undefined);
+    const synthesisedAt = performance.now();
+    const result = postprocess(encodeWav(spoken.samples, spoken.rate), options);
+    return {
+      ...result,
+      voice: vid,
+      rawBytes: spoken.samples.length * 2,
+      synthesisMs: Math.round(synthesisedAt - started),
+      levellingMs: Math.round(performance.now() - synthesisedAt),
+    };
+  }
+
   if (backend === 'azure' && !options.azure) {
     throw new Error('An azure: voice needs options.azure with a key and a region.');
   }

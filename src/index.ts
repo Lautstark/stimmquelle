@@ -24,6 +24,10 @@ export {
 export { DEFAULT_BITRATE, encodeMp3 } from './mp3.js';
 export { remapPhonemeIds, type PhonemeIdMap, type Remapped } from './phonemes.js';
 export {
+  downloadedModels, forgetModels, hasPiperRuntime, phonemise, synthesize, usePiperRuntime,
+  type OnnxModule, type Phonemised, type PhonemizerFactory, type PiperRuntime, type Synthesised,
+} from './synthesize.js';
+export {
   asBlob, AZURE_FORMAT, AZURE_RATE, azureVoices, buildSsml, downloaded, forget,
   localeOf, speak, usePiper,
   type AzureOptions, type PiperModule, type Progress, type SpeakOptions, type Spoken,

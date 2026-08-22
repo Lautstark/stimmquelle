@@ -55,7 +55,9 @@ var voices_default = {
     "mirror on the date in 'checked', not copied from anywhere. Both mirrors were",
     "compared and carry identical bytes for every entry.",
     "",
-    "Roughly a third of the English medium and high voices piper publishes cannot be handed on, and none of them says so anywhere a file name would show it. hfc_female, hfc_male and ryan in both qualities are all CC BY-NC-SA. That is the reason the rejected entries are in this file rather than left out of it."
+    "Roughly a third of the English medium and high voices piper publishes cannot be handed on, and none of them says so anywhere a file name would show it. hfc_female, hfc_male and ryan in both qualities are all CC BY-NC-SA. That is the reason the rejected entries are in this file rather than left out of it.",
+    "",
+    "browser_with_own_ids: what is expected once a consumer drives the inference itself via usePiperRuntime, rather than calling vits-web's predict(). Not a second answer to the same question - it is a different question, because that path takes ids from this model's own table. Nothing here flips to ok on it until it has been heard."
   ],
   revised: "2026-08-22",
   checked: "2026-08-22",
@@ -200,7 +202,8 @@ var voices_default = {
       browser: "quality",
       container: "ok",
       proof: "container",
-      note: "Free to ship and fine in a container - she is mitreden's container default and is in vorlaut's. Published as low only, so no other file helps. Reading each model's own phoneme_id_map instead of vits-web's fixed table is what would bring her back, and it means owning the phonemizer glue rather than calling a library. Note the 16 kHz: vorlaut's device wants exactly that, so a low voice would need no resampling at all."
+      note: "Free to ship and fine in a container - she is mitreden's container default and is in vorlaut's. Published as low only, so no other file helps. Reading each model's own phoneme_id_map instead of vits-web's fixed table is what would bring her back, and it means owning the phonemizer glue rather than calling a library. Note the 16 kHz: vorlaut's device wants exactly that, so a low voice would need no resampling at all. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. Flipping it is a one-line change once vorlaut's ttscheck harness reports.",
+      browser_with_own_ids: "expected ok, not yet heard"
     },
     {
       id: "en_US-john-medium",
@@ -239,7 +242,8 @@ var voices_default = {
       browser: "quality",
       container: "ok",
       proof: "rule",
-      note: "The second of the three German female voices piper publishes. At 20.6 MB it is the only one that is genuinely smaller than a medium model - low is not, despite the name."
+      note: "The second of the three German female voices piper publishes. At 20.6 MB it is the only one that is genuinely smaller than a medium model - low is not, despite the name. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. Flipping it is a one-line change once vorlaut's ttscheck harness reports.",
+      browser_with_own_ids: "expected ok, not yet heard"
     },
     {
       id: "de_DE-ramona-low",
@@ -259,7 +263,8 @@ var voices_default = {
       browser: "quality",
       container: "ok",
       proof: "rule",
-      note: "The third and last German female voice piper publishes."
+      note: "The third and last German female voice piper publishes. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. Flipping it is a one-line change once vorlaut's ttscheck harness reports.",
+      browser_with_own_ids: "expected ok, not yet heard"
     },
     {
       id: "de_DE-karlsson-low",
@@ -278,7 +283,9 @@ var voices_default = {
       },
       browser: "quality",
       container: "ok",
-      proof: "rule"
+      proof: "rule",
+      browser_with_own_ids: "expected ok, not yet heard",
+      note: " The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. Flipping it is a one-line change once vorlaut's ttscheck harness reports."
     },
     {
       id: "en_US-hfc_female-medium",
@@ -374,16 +381,16 @@ var MIRRORS = Object.freeze(voices_default.mirrors);
 var LIBRARY = Object.freeze(voices_default.library);
 var CHECKED = voices_default.checked;
 var QUALITIES = ["x_low", "low", "medium", "high"];
-function shippable(runtime, offering = {}) {
-  return VOICES.filter((v) => v.licence.ship && v[runtime] === "ok" && (offering.rendersAttribution || !v.licence.attribution));
+function shippable(runtime2, offering = {}) {
+  return VOICES.filter((v) => v.licence.ship && v[runtime2] === "ok" && (offering.rendersAttribution || !v.licence.attribution));
 }
 function byId(id) {
   const model = parseVoiceId(id)?.model ?? id;
   return VOICES.find((v) => v.id === model);
 }
-function isAllowed(id, runtime, offering = {}) {
+function isAllowed(id, runtime2, offering = {}) {
   const voice = byId(id);
-  return !!voice && voice.licence.ship && voice[runtime] === "ok" && (offering.rendersAttribution || !voice.licence.attribution);
+  return !!voice && voice.licence.ship && voice[runtime2] === "ok" && (offering.rendersAttribution || !voice.licence.attribution);
 }
 function parseVoiceId(id) {
   const at = id.indexOf(":");
@@ -413,10 +420,10 @@ function attributionsFor(ids) {
 function speakerOf(voice) {
   return voice.id.slice(voice.locale.length + 1, voice.id.length - voice.quality.length - 1);
 }
-function modelUrls(id, runtime) {
+function modelUrls(id, runtime2) {
   const voice = byId(id);
   if (!voice) return null;
-  const base = runtime === "browser" ? MIRRORS.browser : MIRRORS.container;
+  const base = runtime2 === "browser" ? MIRRORS.browser : MIRRORS.container;
   const dir = `${voice.lang}/${voice.locale}/${speakerOf(voice)}/${voice.quality}`;
   return { onnx: `${base}/${dir}/${voice.id}.onnx`, config: `${base}/${dir}/${voice.id}.onnx.json` };
 }
@@ -779,6 +786,143 @@ function remapPhonemeIds(phonemes, phonemeIds, map) {
   return { ids: out, dropped, exact };
 }
 
+// src/synthesize.ts
+var runtime = null;
+function usePiperRuntime(r) {
+  runtime = r;
+}
+var hasPiperRuntime = () => runtime !== null;
+function need() {
+  if (!runtime) {
+    throw new Error(
+      "No piper runtime. Call usePiperRuntime({ phonemizer, onnx, wasmBase }) with wherever this app serves piper_phonemize and onnxruntime from."
+    );
+  }
+  return runtime;
+}
+async function opfs() {
+  try {
+    const root = await navigator?.storage?.getDirectory?.();
+    return await root?.getDirectoryHandle("stimmquelle-models", { create: true }) ?? null;
+  } catch {
+    return null;
+  }
+}
+async function cached(name, url, onProgress) {
+  const r = need();
+  if (r.fetchModel) return r.fetchModel(url);
+  const dir = await opfs();
+  if (dir) {
+    try {
+      const handle = await dir.getFileHandle(name);
+      return await (await handle.getFile()).arrayBuffer();
+    } catch {
+    }
+  }
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`${name}: the mirror said ${response.status}`);
+  const total = Number(response.headers.get("content-length")) || 0;
+  let bytes;
+  if (onProgress && total && response.body) {
+    const reader = response.body.getReader();
+    const parts = [];
+    let loaded = 0;
+    for (; ; ) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parts.push(value);
+      loaded += value.length;
+      onProgress(loaded / total);
+    }
+    bytes = new Uint8Array(loaded);
+    let at = 0;
+    for (const p of parts) {
+      bytes.set(p, at);
+      at += p.length;
+    }
+  } else {
+    bytes = new Uint8Array(await response.arrayBuffer());
+  }
+  if (dir) {
+    try {
+      const handle = await dir.getFileHandle(name, { create: true });
+      const writable = await handle.createWritable();
+      await writable.write(bytes);
+      await writable.close();
+    } catch {
+    }
+  }
+  return bytes.buffer;
+}
+async function downloadedModels() {
+  const dir = await opfs();
+  if (!dir) return [];
+  const out = [];
+  for await (const name of dir.keys()) {
+    if (name.endsWith(".onnx")) out.push(name.slice(0, -".onnx".length));
+  }
+  return out;
+}
+async function forgetModels() {
+  const dir = await opfs();
+  if (!dir) return;
+  const names = [];
+  for await (const name of dir.keys()) names.push(name);
+  for (const name of names) await dir.removeEntry(name).catch(() => {
+  });
+}
+async function phonemise(text, espeakVoice) {
+  const r = need();
+  const { createPiperPhonemize } = await r.phonemizer();
+  const base = r.wasmBase.endsWith("/") ? r.wasmBase : `${r.wasmBase}/`;
+  const line = await new Promise((resolve, reject) => {
+    createPiperPhonemize({
+      print: resolve,
+      printErr: (message) => reject(new Error(message)),
+      locateFile: (path) => path.endsWith(".wasm") ? `${base}piper_phonemize.wasm` : path.endsWith(".data") ? `${base}piper_phonemize.data` : path
+    }).then((module) => module.callMain([
+      "-l",
+      espeakVoice,
+      "--input",
+      JSON.stringify([{ text: text.trim() }]),
+      "--espeak_data",
+      "/espeak-ng-data"
+    ])).catch(reject);
+  });
+  const parsed = JSON.parse(line);
+  return { phonemes: parsed.phonemes, phonemeIds: parsed.phoneme_ids };
+}
+async function synthesize(text, id, onProgress) {
+  const r = need();
+  const voice = byId(id);
+  if (!voice) throw new Error(`${id} is not in the catalogue, so it must not be fetched.`);
+  const urls = modelUrls(voice.id, "browser");
+  const configBytes = await cached(`${voice.id}.onnx.json`, urls.config);
+  const config = JSON.parse(new TextDecoder().decode(configBytes));
+  const { phonemes, phonemeIds } = await phonemise(text, config.espeak.voice);
+  const { ids, dropped, exact } = remapPhonemeIds(phonemes, phonemeIds, config.phoneme_id_map);
+  const model = await cached(`${voice.id}.onnx`, urls.onnx, onProgress);
+  const ort = await r.onnx();
+  ort.env.allowLocalModels = false;
+  ort.env.wasm.wasmPaths = r.wasmBase.endsWith("/") ? r.wasmBase : `${r.wasmBase}/`;
+  const session = await ort.InferenceSession.create(model);
+  const feeds = {
+    input: new ort.Tensor("int64", BigInt64Array.from(ids, BigInt), [1, ids.length]),
+    input_lengths: new ort.Tensor("int64", BigInt64Array.from([ids.length], BigInt)),
+    scales: new ort.Tensor("float32", Float32Array.from([
+      config.inference.noise_scale,
+      config.inference.length_scale,
+      config.inference.noise_w
+    ]))
+  };
+  if (config.speaker_id_map && Object.keys(config.speaker_id_map).length) {
+    feeds.sid = new ort.Tensor("int64", BigInt64Array.from([0n]));
+  }
+  const output = await session.run(feeds);
+  const audio = (output.output ?? Object.values(output)[0]).data;
+  return { samples: audio, rate: config.audio.sample_rate, exact, dropped };
+}
+
 // src/speak.ts
 var loadPiper = null;
 function usePiper(load2) {
@@ -860,6 +1004,18 @@ async function speak(text, vid, options = {}) {
     );
   }
   const started = performance.now();
+  if (backend === "piper" && hasPiperRuntime()) {
+    const spoken2 = await synthesize(text, model, options.onProgress ? (share) => options.onProgress({ url: model, loaded: share, total: 1, share }) : void 0);
+    const synthesisedAt = performance.now();
+    const result2 = postprocess(encodeWav(spoken2.samples, spoken2.rate), options);
+    return {
+      ...result2,
+      voice: vid,
+      rawBytes: spoken2.samples.length * 2,
+      synthesisMs: Math.round(synthesisedAt - started),
+      levellingMs: Math.round(performance.now() - synthesisedAt)
+    };
+  }
   if (backend === "azure" && !options.azure) {
     throw new Error("An azure: voice needs options.azure with a key and a region.");
   }
@@ -896,24 +1052,30 @@ export {
   decodeWav,
   displayName,
   downloaded,
+  downloadedModels,
   encodeMp3,
   encodeWav,
   fadeEnds,
   forget,
+  forgetModels,
+  hasPiperRuntime,
   integratedLufs,
   isAllowed,
   localeOf,
   modelUrls,
   pad,
   parseVoiceId,
+  phonemise,
   postprocess,
   qualityOf,
   remapPhonemeIds,
   resample,
   shippable,
   speak,
+  synthesize,
   toPcm16,
   trim,
   truePeakDb,
-  usePiper
+  usePiper,
+  usePiperRuntime
 };

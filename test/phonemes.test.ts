@@ -14,10 +14,18 @@ const { cases, thorsten, kerstin } = fixture as unknown as {
 };
 
 describe('reading ids from the model rather than from the phonemizer', () => {
-  it('changes nothing for a model that agrees with the phonemizer', () => {
-    // de_DE-thorsten-medium works today. Whatever this fix does for the older
-    // voices, it must not move a voice that already speaks — the recordings
-    // exist and the fingerprints name them.
+  // THE INVARIANT. Not a happy consequence of the rule — the reason a consumer
+  // can adopt the new path without re-rendering anything.
+  //
+  // Identical phoneme ids mean identical inference input, which means the same
+  // synthesis path and no reason to bump a pipeline version. vorlaut re-rendered
+  // every recording on every device to adopt the loudness contract; this must
+  // not cost it a second one in the same week.
+  //
+  // "Identical audio" is not the test and cannot be: piper has a stochastic
+  // duration predictor and three renders of one sentence give three different
+  // files. Identical ids is the property that carries.
+  it('gives a voice that already speaks byte-identical ids, so nothing re-renders', () => {
     for (const c of cases) {
       const { ids, exact, dropped } = remapPhonemeIds(c.phonemes, c.phoneme_ids, thorsten.phoneme_id_map);
       expect(ids, c.text).toEqual(c.phoneme_ids);

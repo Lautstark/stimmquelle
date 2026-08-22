@@ -1,0 +1,100 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { phonemise, speak, synthesize, usePiperRuntime } from '../src/index.js';
+import fixture from './phonemes.fixture.json' with { type: 'json' };
+
+const { cases, thorsten, kerstin } = fixture as unknown as {
+  cases: { text: string; phonemes: string[]; phoneme_ids: number[] }[];
+  thorsten: { num_symbols: number; phoneme_id_map: Record<string, number[]> };
+  kerstin: { num_symbols: number; phoneme_id_map: Record<string, number[]> };
+};
+
+/**
+ * The plumbing, with the two expensive halves stubbed.
+ *
+ * A real run needs a 63 MB model and onnxruntime; vorlaut's tools/ttscheck.py
+ * does that against real piper and real ffmpeg, and is where the audio gets
+ * judged. What is checked here is everything between: that the config is read,
+ * that the ids handed to the session are the model's own and not the
+ * phonemizer's, and that a voice which could not previously speak now produces
+ * ids inside its range.
+ */
+const config = (map: Record<string, number[]>, rate = 22050) => JSON.stringify({
+  phoneme_id_map: map,
+  espeak: { voice: 'de' },
+  audio: { sample_rate: rate },
+  inference: { noise_scale: 0.667, length_scale: 1, noise_w: 0.8 },
+  speaker_id_map: {},
+});
+
+let sessionInput: number[] = [];
+
+function stub(map: Record<string, number[]>, phonemes: string[], phonemeIds: number[]) {
+  usePiperRuntime({
+    wasmBase: '/vendor/',
+    phonemizer: async () => ({
+      createPiperPhonemize: async (o: { print(l: string): void }) => ({
+        callMain: () => o.print(JSON.stringify({ phonemes, phoneme_ids: phonemeIds })),
+      }),
+    }),
+    onnx: async () => ({
+      env: { wasm: {} },
+      Tensor: class { constructor(public type: string, public data: BigInt64Array | Float32Array) {} } as never,
+      InferenceSession: {
+        create: async () => ({
+          run: async (feeds: Record<string, { data: BigInt64Array }>) => {
+            sessionInput = [...feeds.input.data].map(Number);
+            return { output: { data: new Float32Array(2048).fill(0.1) } };
+          },
+        }),
+      },
+    } as never),
+    fetchModel: async url => new TextEncoder().encode(
+      url.endsWith('.json') ? config(map) : 'not-a-real-model',
+    ).buffer as ArrayBuffer,
+  });
+}
+
+describe('driving piper directly', () => {
+  const one = cases[0]!;
+  beforeEach(() => { sessionInput = []; });
+
+  it('feeds the session the model’s own ids, not the phonemizer’s', async () => {
+    stub(kerstin.phoneme_id_map, one.phonemes, one.phoneme_ids);
+    const out = await synthesize(one.text, 'piper:de_DE-kerstin-low');
+    expect(Math.max(...sessionInput)).toBeLessThan(kerstin.num_symbols);
+    expect(out.rate).toBe(22050);
+    expect(out.dropped).toEqual([]);
+  });
+
+  it('leaves a working voice’s ids exactly as they were', async () => {
+    stub(thorsten.phoneme_id_map, one.phonemes, one.phoneme_ids);
+    await synthesize(one.text, 'piper:de_DE-thorsten-medium');
+    expect(sessionInput).toEqual(one.phoneme_ids);
+  });
+
+  it('refuses a voice that is not in the catalogue before fetching anything', async () => {
+    stub(thorsten.phoneme_id_map, one.phonemes, one.phoneme_ids);
+    await expect(synthesize('Hallo', 'piper:en_GB-nobody-medium')).rejects.toThrow(/not in the catalogue/);
+  });
+
+  it('reads phonemes and ids out of the phonemizer', async () => {
+    stub(thorsten.phoneme_id_map, one.phonemes, one.phoneme_ids);
+    const p = await phonemise(one.text, 'de');
+    expect(p.phonemes).toEqual(one.phonemes);
+    expect(p.phonemeIds).toEqual(one.phoneme_ids);
+  });
+
+  it('goes through speak(), levelled, when a runtime is configured', async () => {
+    stub(thorsten.phoneme_id_map, one.phonemes, one.phoneme_ids);
+    const out = await speak(one.text, 'piper:de_DE-thorsten-medium', { rate: 16000 });
+    expect(out.rate).toBe(16000);
+    expect(out.wav.byteLength).toBeGreaterThan(44);
+    expect(out.voice).toBe('piper:de_DE-thorsten-medium');
+  });
+
+  it('still refuses a voice that may not be shipped, on the new path too', async () => {
+    // The licence gate is not something the faster route gets to skip.
+    stub(thorsten.phoneme_id_map, one.phonemes, one.phoneme_ids);
+    await expect(speak('Hallo', 'piper:en_US-hfc_female-medium')).rejects.toThrow(/may not be shipped/);
+  });
+});
