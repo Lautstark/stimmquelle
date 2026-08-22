@@ -151,8 +151,13 @@ pointed the wrong way. So `browser_with_own_ids` reads `ok by measurement, not
 yet by ear`, and `browser` stays `quality`. A machine has heard her. A person
 has not, and that is the only thing left that can move it.
 
-`de_DE-mls-medium` is a 236-speaker corpus with no name a picker can show, and it
-remains the closest thing that speaks today.
+`de_DE-mls-medium` is not the answer either, and that is now measured rather
+than assumed. All 236 of its speakers were rendered saying the same sentence —
+same model, only `sid` changed — and **none of them sounds like German.** Not a
+pacing problem and not a pitch problem: they do not sound like the language.
+Kerstin went through the same harness as a control and came out fine, so the
+phoneme path was not at fault. `conformance/audition-speakers.mjs` is the script,
+kept so nobody re-derives the question from the speaker count.
 
 It would not save much download: `de_DE-kerstin-low` is 63.1 MB against
 `de_DE-thorsten-medium`'s 63.2 MB. Only `x_low` is genuinely smaller. But `low`
