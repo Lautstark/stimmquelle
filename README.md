@@ -181,9 +181,17 @@ import { speak, usePiper, asBlob } from '@lautstark/stimmquelle';
 usePiper(() => import('./vendor/vits-web.js'));   // wherever this app serves it from
 
 const out = await speak('Ich möchte noch nicht ins Bett.', 'piper:de_DE-thorsten-medium',
-                        { rate: 16000, onProgress: p => show(p.share) });
+                        { onProgress: p => show(p.share) });
 audio.src = URL.createObjectURL(asBlob(out.wav));
 ```
+
+**Leave `rate` alone in a browser.** It defaults to 44100 and that is the right
+answer there. A `medium` model speaks at 22.05 kHz, so asking for `rate: 16000`
+discards everything above 8 kHz — measured at **38 dB** down in the 8–11 kHz band
+on `de_DE-thorsten-medium`, with the rest of the spectrum untouched. That is
+audible, and it is what "the browser sounds duller than the container" turns out
+to be. 16 kHz is vorlaut's amplifier asking, not a browser limit, and this example
+used to pass it for no reason.
 
 `speak` **checks the catalogue before it fetches anything.** A voice that may not
 be shipped, that owes an attribution this consumer has not claimed to render,
