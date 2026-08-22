@@ -18,7 +18,7 @@ export {
 } from './contract.js';
 export {
   decodeWav, encodeWav, fadeEnds, integratedLufs, pad, postprocess, resample,
-  trim, truePeakDb,
+  toPcm16, trim, truePeakDb,
   type Levelled, type LevelOptions,
 } from './level.js';
 export {

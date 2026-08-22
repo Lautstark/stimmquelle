@@ -127,6 +127,26 @@ export function decodeWav(bytes: Uint8Array): { samples: Float32Array; rate: num
 
 // --- WAV out -----------------------------------------------------------------
 
+/**
+ * Samples to 16 bit PCM.
+ *
+ * Exported because a consumer encoding to something other than WAV needs the
+ * *same* quantisation — mitreden hands this straight to lamejs. Two roundings
+ * that disagree by a bit would be a difference between its MP3 and its WAV
+ * download of one recording, which is the sort of thing nobody ever finds.
+ *
+ * Asymmetric on purpose: −1 has an integer, +1 does not, and rounding +1 to
+ * 32768 wraps to the loudest possible negative sample — a click.
+ */
+export function toPcm16(samples: Float32Array): Int16Array {
+  const pcm = new Int16Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    const v = Math.max(-1, Math.min(1, samples[i]));
+    pcm[i] = Math.round(v < 0 ? v * 32768 : v * 32767);
+  }
+  return pcm;
+}
+
 /** 16 bit PCM, one channel, the given rate. */
 export function encodeWav(samples: Float32Array, rate: number): Uint8Array {
   const bytes = new Uint8Array(44 + samples.length * 2);
@@ -146,12 +166,8 @@ export function encodeWav(samples: Float32Array, rate: number): Uint8Array {
   view.setUint16(34, 16, true);
   text(36, 'data');
   view.setUint32(40, samples.length * 2, true);
-  for (let i = 0; i < samples.length; i++) {
-    const v = Math.max(-1, Math.min(1, samples[i]));
-    // Asymmetric on purpose: -1 has an integer, +1 does not, and rounding +1 to
-    // 32768 wraps to the loudest possible negative sample — a click.
-    view.setInt16(44 + i * 2, Math.round(v < 0 ? v * 32768 : v * 32767), true);
-  }
+  const pcm = toPcm16(samples);
+  for (let i = 0; i < pcm.length; i++) view.setInt16(44 + i * 2, pcm[i], true);
   return bytes;
 }
 

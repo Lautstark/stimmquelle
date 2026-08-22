@@ -402,6 +402,14 @@ function decodeWav(bytes) {
   }
   return { samples: out, rate };
 }
+function toPcm16(samples) {
+  const pcm = new Int16Array(samples.length);
+  for (let i = 0; i < samples.length; i++) {
+    const v = Math.max(-1, Math.min(1, samples[i]));
+    pcm[i] = Math.round(v < 0 ? v * 32768 : v * 32767);
+  }
+  return pcm;
+}
 function encodeWav(samples, rate) {
   const bytes = new Uint8Array(44 + samples.length * 2);
   const view = new DataView(bytes.buffer);
@@ -420,10 +428,8 @@ function encodeWav(samples, rate) {
   view.setUint16(34, 16, true);
   text(36, "data");
   view.setUint32(40, samples.length * 2, true);
-  for (let i = 0; i < samples.length; i++) {
-    const v = Math.max(-1, Math.min(1, samples[i]));
-    view.setInt16(44 + i * 2, Math.round(v < 0 ? v * 32768 : v * 32767), true);
-  }
+  const pcm = toPcm16(samples);
+  for (let i = 0; i < pcm.length; i++) view.setInt16(44 + i * 2, pcm[i], true);
   return bytes;
 }
 var sinc = (x) => x === 0 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x);
@@ -742,6 +748,7 @@ export {
   resample,
   shippable,
   speak,
+  toPcm16,
   trim,
   truePeakDb,
   usePiper
