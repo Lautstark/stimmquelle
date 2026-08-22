@@ -143,71 +143,78 @@ rate; the consumer encodes.
 
 ## Using it
 
-**There is nothing to install, and there is no registry publish.** Same as
-bildquelle: this is consumed straight from GitHub and pinned by commit, so a
-consumer that has not run an update is byte-for-byte on a known version and
-nobody has to trust a version range.
-
-Today that means one file: **copy `voices.json` in and pin where it came from.**
-It is 6 KB of JSON, every consumer already has something that can read JSON, and
-a copy that records its source commit is a vendored dependency rather than a
-duplicate.
-
-```
-https://raw.githubusercontent.com/Lautstark/stimmquelle/<commit-sha>/voices.json
-```
-
-Alongside the copy, a `VENDORED.md` — or a line in an existing lock file —
-holding the commit it came from and the command that refreshes it. Prose is
-enough; it carries the same facts a lock entry would.
-
-### The four consumers, concretely
-
-**A container image.** `mitreden/Dockerfile` and `vorlaut/Dockerfile` each
-hardcode the same four voice paths in a shell loop. Both replace that with the
-pinned file and derive the paths from it. Neither image gains a dependency —
-`python:3.12-slim` already has Python, so no `jq` is needed:
-
-```sh
-ARG STIMMQUELLE=<commit-sha>
-ADD https://raw.githubusercontent.com/Lautstark/stimmquelle/${STIMMQUELLE}/voices.json /voices.json
-RUN python3 -c "import json;       print('\n'.join(v['id'] for v in json.load(open('/voices.json'))['voices']             if v['licence']['ship'] and v['container'] == 'ok'))" > /wanted.txt
-```
-
-The `ARG` is the pin, and bumping it is a visible one-line diff.
-
-**A Python module.** `tts.py` reads the same file instead of holding
-`VOICE_CATALOGUE`. Standard library only — `json.load`, and a filter on
-`licence.ship`.
-
-**A page with a vendoring tool.** mitreden's `tools/vendor.py` already fetches
-third-party files, pins them by sha256 in `tools/vendor.lock.json` and serves
-them same-origin. `voices.json` becomes one more entry in its `CODE` list, lands
-in `docs/app/vendor/`, and `--check` verifies it like everything else.
-
-**A page with an import map.** vorlaut vendors to
-`static/vendor/stimmquelle/voices.json` with a `VENDORED.md` beside it, the same
-shape bildquelle is vendored in.
-
-### When there is code
-
-The same two routes, because the two consumers are shaped differently and
-neither should have to change to suit the other:
+It is a package, consumed **straight from GitHub and pinned by commit** — the
+same as bildquelle, and there is no registry publish. A consumer who has not run
+an update is byte-for-byte on a known version, and nobody has to trust a version
+range for a file whose whole job is being the audited answer.
 
 ```
 npm install github:Lautstark/stimmquelle#<commit-sha>
 ```
 
-for anything with a bundler — and for a repository with no bundler, a
-**committed** self-contained ESM build with no bare imports, dropped into
-`static/vendor/` or fetched by a `vendor.py` and pinned by sha256. Committed
-rather than built by `prepare`, because a consumer with no package manager cannot
-run `prepare`.
+```ts
+import { shippable, isAllowed, attributionsFor, modelUrls } from '@lautstark/stimmquelle';
 
-The Python module is one stdlib-only file, so it is `pip install` from a git
-commit for a repository that has a `requirements.txt`, and a vendored copy for
-one that does not. mitreden's container has no pip dependencies at all and is not
-getting one for this.
+// What this runtime may offer. Both halves matter and they are unrelated:
+// the licence says it may be handed on, the runtime says it will speak.
+const voices = shippable('browser');
+
+// Before fetching anything. An id that reaches Hugging Face unchecked is a
+// licensing decision made by whoever typed it.
+if (!isAllowed(id, 'browser')) throw new Error(`not an offerable voice: ${id}`);
+
+const { onnx, config } = modelUrls(id, 'browser')!;
+
+// Whatever ends up on screen or in an exported file, render what is owed.
+const notices = attributionsFor(usedVoiceIds);
+```
+
+`shippable`, `isAllowed`, `byId`, `displayName`, `qualityOf`, `parseVoiceId`,
+`attributionsFor`, `modelUrls`, and `VOICES`, `MIRRORS`, `LIBRARY`, `CHECKED`.
+No network, no disk, no synthesis — `displayName` in particular works from an id
+alone, including for a model that is not in the catalogue, because a machine that
+cannot render a WAV still has to know what the file would have been called.
+
+### For a page with no bundler
+
+mitreden's browser build has no npm and no bundler, deliberately, and vorlaut has
+none yet either. So the package also ships a **committed** self-contained ESM
+build with no bare imports and the catalogue inlined — 13 kB, one file, loadable
+from a relative path or from behind an import map:
+
+```
+dist/browser/stimmquelle.js
+```
+
+Committed rather than produced by `prepare`, because a consumer with no package
+manager cannot run `prepare`. CI fails if it stops matching the source.
+
+Fetch it with `tools/vendor.py` and pin it by sha256 in `vendor.lock.json`, or
+drop it in `static/vendor/stimmquelle/` with a `VENDORED.md` recording the commit.
+Both work; they are the two conventions the two consumers already have.
+
+### Just the data
+
+`voices.json` sits at the root and is exported as `@lautstark/stimmquelle/voices.json`,
+so anything that can parse JSON can read it without the module — a `jq` line, a
+`json.load`, a build script. It stays a plain file rather than becoming a
+constant inside the module for that reason, and because a change to it should
+review as a data diff rather than as code.
+
+## Developing
+
+```
+npm install
+npm run typecheck
+npm test
+npm run build
+```
+
+The tests are the licensing rule made executable rather than a description of
+the module. Documentation is the weakest form of enforcement: all three of the
+prose statements of this rule were correct on the day a CC BY-NC-SA voice reached
+a browser build. **A failure in `test/catalogue.test.ts` is a licence problem, not
+a broken test.**
 
 ## Licence
 

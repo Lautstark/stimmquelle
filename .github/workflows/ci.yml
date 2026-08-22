@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      # The licensing rule is asserted here. A failure is a licence problem,
+      # not just a broken test.
+      - run: npm test
+      - run: npm run build
+      # The browser build is committed, because the consumers that need it have
+      # no package manager to run `prepare` with. So it has to still match.
+      - name: the committed browser build is current
+        run: git diff --exit-code -- dist/browser
