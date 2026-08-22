@@ -64,9 +64,14 @@ the version a consumer pins moves when the file it reads does.
   they were frozen: ffmpeg 9.0.1, all five tones still agreeing to the tenth of a
   decibel ffmpeg prints. Recorded in `conformance/calibration.json` under
   `verified`, because CI has no ffmpeg and is not getting one.
-- **CONTRACT.md notes the open one.** The ceiling clamps Kerstin 2.4 dB below
-  where it puts Thorsten, so two voices in one app do not match. That is §1
-  working as written, and it is the failure levelling exists to prevent.
+- **One thing turned up and is not written down anywhere yet.** The true-peak
+  ceiling stops Kerstin short of the target, so she lands quieter than Thorsten
+  through the same chain and two voices in one app do not match. The figure
+  reported alongside it — about 2.4 dB — is in the commit message for `6ec49a0`
+  and in no test, no fixture and no measurement in this repository, so treat it
+  as an observation and not as a number. §1 gives the ceiling priority over the
+  target on purpose; hitting both would mean limiting, which changes the sound.
+  Whether that is worth doing is open.
 
 ### What to edit
 
