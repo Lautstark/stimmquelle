@@ -6,6 +6,14 @@
     "declarationMap": true,
     "sourceMap": true,
     "outDir": "dist",
+    // Pinned, rather than left to be inferred. `catalogue.ts` imports
+    // `../voices.json`, which without this drags the package root into the
+    // inferred rootDir and pushes the whole build down into `dist/src/` — where
+    // none of the entry points package.json declares were pointing. `dist/`
+    // sits at the same depth as `src/`, so the emitted `../voices.json` still
+    // resolves to the one audited copy at the root rather than to a second copy
+    // beside it.
+    "rootDir": "src",
     "types": []
   },
   "include": ["src"]

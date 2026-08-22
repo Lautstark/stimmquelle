@@ -21,6 +21,9 @@ jobs:
       # not just a broken test.
       - run: npm test
       - run: npm run build
+      # An entry point nobody imports from outside the package is an entry point
+      # nobody has checked. Every one of 2.0.0's was wrong.
+      - run: npm run check:exports
       # The browser build is committed, because the consumers that need it have
       # no package manager to run `prepare` with. So it has to still match.
       - name: the committed browser build is current

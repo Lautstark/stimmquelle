@@ -1,6 +1,6 @@
 {
   "name": "@lautstark/stimmquelle",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "type": "module",
   "description": "Piper voices for German AAC tools: which may be shipped, which speak in a browser, and the loudness contract both halves of a talker agree on.",
   "license": "MIT",
@@ -24,7 +24,10 @@
       "default": "./dist/index.js"
     },
     "./voices.json": "./voices.json",
-    "./browser": "./dist/browser/index.js"
+    "./browser": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/browser/index.js"
+    }
   },
   "files": [
     "dist",
@@ -39,6 +42,7 @@
     "build": "tsc -p tsconfig.build.json && npm run build:browser",
     "build:browser": "esbuild src/index.ts --bundle --format=esm --platform=browser --target=es2022 --splitting --chunk-names=[name] --outdir=dist/browser",
     "typecheck": "tsc -p tsconfig.json",
+    "check:exports": "node tools/check-exports.mjs",
     "test": "vitest run",
     "prepare": "npm run build"
   },

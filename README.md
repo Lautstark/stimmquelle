@@ -389,16 +389,25 @@ every recording.
 
 ## Using it
 
-It is a package, consumed **straight from GitHub and pinned by commit** — the
-same as bildquelle, and there is no registry publish. A consumer who has not run
-an update is byte-for-byte on a known version, and nobody has to trust a version
+It is a package, consumed **straight from GitHub and pinned** — the same as
+bildquelle, and there is no registry publish. A consumer who has not run an
+update is byte-for-byte on a known version, and nobody has to trust a version
 range for a file whose whole job is being the audited answer.
+
+```
+npm install github:Lautstark/stimmquelle#v2.0.1
+```
+
+Every release from 2.0.0 on is tagged, so the pin reads as a version rather than
+as a sha — the same shape `@lautstark/design` is already pinned at. A sha still
+works, and is the stronger guarantee of the two: a tag is a name somebody can
+move, a sha is not.
 
 ```
 npm install github:Lautstark/stimmquelle#<commit-sha>
 ```
 
-Which means an update is somebody moving that sha deliberately, and nothing here
+Either way an update is somebody moving that pin deliberately, and nothing here
 reaches a consumer by itself. [`CHANGELOG.md`](CHANGELOG.md) is what to read when
 moving it — it says what changed and, where the API moved, exactly what to edit.
 
@@ -483,7 +492,13 @@ npm install
 npm run typecheck
 npm test
 npm run build
+npm run check:exports
 ```
+
+`check:exports` loads every entry point `package.json` declares, by the specifier
+a consumer writes rather than by a relative path. It runs after the build
+because it reads `dist/`, and it exists because a package cannot see its own
+entry points from the inside: all of 2.0.0's were wrong and nothing noticed.
 
 108 tests. They are the rules made executable rather than a description of the
 module. Documentation is the weakest form of enforcement: all three of the prose

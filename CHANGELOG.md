@@ -1,11 +1,65 @@
 # Changelog
 
-Consumers pin this package **by commit**, so nothing here reaches anybody by
-itself. This file exists to say what changed and — where it matters — what a
-consumer has to edit before the update compiles.
+Consumers pin this package **by tag or by commit**, so nothing here reaches
+anybody by itself. This file exists to say what changed and — where it matters —
+what a consumer has to edit before the update compiles.
+
+Every release from 2.0.0 on has a tag, so a pin can read as a version —
+`#v2.0.1` — rather than as a sha. Tags are what a human moves deliberately; the
+sha is still there for anyone who wants the stronger guarantee.
 
 `VERSION` is exported, so a vendored `dist/browser/index.js` can say which one it
 is without anybody having to remember.
+
+---
+
+## 2.0.1
+
+**The package's own entry points, which had never worked.** No behaviour
+changed, nothing sounds different, and nothing needs re-rendering.
+
+### What to edit
+
+mitreden's `tsconfig.json` carries a `paths` override for
+`@lautstark/stimmquelle/browser` pointing at
+`node_modules/@lautstark/stimmquelle/dist/src/index.d.ts`. **Delete it.** The
+subpath now carries its own `types`, and the file it names no longer exists —
+the build emits `dist/index.d.ts`, which is what `package.json` was claiming all
+along.
+
+### What was wrong
+
+`main`, `types` and `exports["."]` all pointed at `./dist/index.js` and
+`./dist/index.d.ts`. The build wrote `dist/src/index.js`, because `catalogue.ts`
+imports `../voices.json` and an un-pinned `rootDir` widened to the package root
+to take it in. So `import { speak } from '@lautstark/stimmquelle'` did not
+resolve at all, for the whole of 2.0.0.
+
+Nothing caught it. Typecheck and tests read `src`, the browser bundle is built
+by esbuild and never touched the broken paths, and the one consumer reached past
+`exports` entirely with the override above. A package cannot see its own entry
+points from the inside.
+
+`rootDir` is now pinned to `src`, so the build is flat and `../voices.json`
+still resolves to the single audited copy at the root rather than to a second
+one emitted beside it. `npm run check:exports` loads every declared entry point
+by its public specifier, and CI runs it.
+
+### Also
+
+`exports["./browser"]` now has a `types` condition. It never had one, which is
+the reason the override existed.
+
+Two findings landed in this release alongside the fix, neither of them code:
+
+- **mls is ruled out as a German female voice**, on the evidence of all 236
+  speakers rendered and listened to. The entry stays in `voices.json` with what
+  was measured attached, so nobody has the idea again. Kerstin holds the slot.
+- **`speak()`'s README example no longer passes `rate: 16000`.** It was the line
+  anybody would copy, and against a 22.05 kHz model it threw away everything
+  above 8 kHz — 38 dB down in the 8–11 kHz band. The default of 44100 was always
+  right; only the example disagreed. No behaviour changed, but a consumer that
+  copied that line should drop it and re-render.
 
 ---
 
