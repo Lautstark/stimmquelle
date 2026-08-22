@@ -18,7 +18,19 @@ export const TRIM = Object.freeze({
   keepTailSec: 0.05,
 });
 
-/** Where loudness is measured. The BS.1770 coefficients are the 48 kHz ones. */
+/**
+ * Where loudness is measured, and the rate `integratedLufs` must be handed.
+ *
+ * **A name for 48 kHz, not a setting.** The K-weighting coefficients in
+ * `level.ts` are the published 48 kHz ones, so moving this number without
+ * deriving new ones would not measure at a different rate — it would measure
+ * wrongly, and by an amount nothing in the package could report. The
+ * conformance references were captured from ffmpeg at this rate too, so they
+ * would stop meaning anything at the same moment.
+ *
+ * A test pins it, in the same way and for the same reason CONTRACT.md §3 pins
+ * the engine version: two files that cannot read each other drift silently.
+ */
 export const MEASURE_RATE = 48000;
 
 /**

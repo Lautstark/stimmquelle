@@ -20,7 +20,7 @@
  * Ported from vorlaut's `static/tts/level.js`, which is where all of the above
  * was worked out and measured.
  */
-import { TARGET_LUFS, TARGET_PEAK_DBTP, TRIM } from './contract.js';
+import { MEASURE_RATE, TARGET_LUFS, TARGET_PEAK_DBTP, TRIM } from './contract.js';
 
 /** How the chain may be varied. Everything omitted follows CONTRACT.md. */
 export interface LevelOptions {
@@ -387,7 +387,10 @@ function biquad(x: Float32Array, b0: number, b1: number, b2: number, a1: number,
  *
  * The two filters are the K weighting: a shelf for the head, then a high pass.
  * Their coefficients are the published 48 kHz ones, **so the caller has to hand
- * this a 48 kHz signal.** Measuring at another rate is wrong, not approximate.
+ * this a `MEASURE_RATE` signal.** Measuring at another rate is wrong, not
+ * approximate — and the constant is a name for the rate those coefficients
+ * belong to rather than a setting. Moving it means deriving new ones, which is
+ * why a test pins it rather than leaving it to read like a knob.
  *
  * Then 400 ms blocks overlapping by three quarters, and the two gates that make
  * this *integrated* rather than an average: below −70 LUFS is not programme
@@ -399,7 +402,7 @@ export function integratedLufs(x: Float32Array): number {
   let k = biquad(x, 1.53512485958697, -2.69169618940638, 1.19839281085285,
                  -1.69065929318241, 0.73248077421585);
   k = biquad(k, 1.0, -2.0, 1.0, -1.99004745483398, 0.99007225036621);
-  const block = Math.round(0.4 * 48000), step = Math.round(0.1 * 48000);
+  const block = Math.round(0.4 * MEASURE_RATE), step = Math.round(0.1 * MEASURE_RATE);
   const power: number[] = [];
   for (let s = 0; s + block <= k.length; s += step) {
     let sum = 0;
@@ -477,7 +480,7 @@ export function postprocess(wavBytes: Uint8Array, o: LevelOptions = {}): Levelle
   // Measured at the rate it was spoken at, not at the output rate: the K
   // weighting reaches above 8 kHz, and measuring after a downsample to 16 kHz
   // would quietly leave that energy out of the answer.
-  const lufs = integratedLufs(resample(shaped, inRate, 48000));
+  const lufs = integratedLufs(resample(shaped, inRate, MEASURE_RATE));
 
   const out = resample(shaped, inRate, rate);
 

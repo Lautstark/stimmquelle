@@ -411,7 +411,7 @@ npm test
 npm run build
 ```
 
-88 tests. They are the rules made executable rather than a description of the
+90 tests. They are the rules made executable rather than a description of the
 module. Documentation is the weakest form of enforcement: all three of the prose
 statements of the licensing rule were correct on the day a CC BY-NC-SA voice
 reached a browser build, and the rule was correct in this README on the day

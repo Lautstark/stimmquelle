@@ -669,7 +669,7 @@ function integratedLufs(x) {
     0.73248077421585
   );
   k = biquad(k, 1, -2, 1, -1.99004745483398, 0.99007225036621);
-  const block = Math.round(0.4 * 48e3), step = Math.round(0.1 * 48e3);
+  const block = Math.round(0.4 * MEASURE_RATE), step = Math.round(0.1 * MEASURE_RATE);
   const power = [];
   for (let s = 0; s + block <= k.length; s += step) {
     let sum = 0;
@@ -704,7 +704,7 @@ function postprocess(wavBytes, o = {}) {
   let shaped = trim(samples, inRate, o);
   if (o.fadeSec) shaped = fadeEnds(shaped, inRate, o.fadeSec);
   if (o.padSec) shaped = pad(shaped, inRate, o.padSec);
-  const lufs = integratedLufs(resample(shaped, inRate, 48e3));
+  const lufs = integratedLufs(resample(shaped, inRate, MEASURE_RATE));
   const out = resample(shaped, inRate, rate);
   let gainDb = TARGET_LUFS - lufs;
   const peakDb = truePeakDb(out, rate);

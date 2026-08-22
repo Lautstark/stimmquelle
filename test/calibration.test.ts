@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { encodeWav, integratedLufs, resample, truePeakDb } from '../src/index.js';
+import { encodeWav, integratedLufs, MEASURE_RATE, resample, truePeakDb } from '../src/index.js';
 import calibration from '../conformance/calibration.json' with { type: 'json' };
 
 /**
@@ -20,6 +20,25 @@ import calibration from '../conformance/calibration.json' with { type: 'json' };
  * A failure here is not a test to adjust. conformance/calibrate.sh regenerates
  * the numbers from ffmpeg if they ever genuinely need it.
  */
+describe('the rate everything here is calibrated at', () => {
+  it('is the one the K weighting has coefficients for', () => {
+    // MEASURE_RATE is a name for 48 kHz, not a setting. The two biquads in
+    // level.ts are the published 48 kHz coefficients, so moving the constant
+    // without deriving new ones would not measure at another rate — it would
+    // measure wrongly, and nothing in the package could report by how much.
+    // Pinned here for the reason CONTRACT.md §3 pins the engine version: two
+    // files that cannot read each other drift silently, in both directions.
+    expect(MEASURE_RATE).toBe(48000);
+  });
+
+  it('is the rate ffmpeg read these references at', () => {
+    // The outside opinion was captured at calibration.rate. If the chain
+    // measured somewhere else, every tone below would still pass — against a
+    // reference for a different measurement.
+    expect(MEASURE_RATE).toBe(calibration.rate);
+  });
+});
+
 describe('the loudness measurement against an outside opinion', () => {
   const { rate, tolerance_db, tones } = calibration;
 
