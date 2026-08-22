@@ -1753,5 +1753,35 @@
     129
    ]
   }
+ },
+ "native_piper": {
+  "note": [
+   "What native piper 1.7.0 does with the same sentence, dumped by vorlaut via",
+   "PiperVoice.phonemize + phonemes_to_ids. Not produced by this code.",
+   "",
+   "It is here because this package deliberately disagrees with it, and a",
+   "disagreement with the reference implementation has to be written down with",
+   "its evidence or somebody will 'fix' it back."
+  ],
+  "version": "1.7.0",
+  "text": "Ich möchte noch nicht ins Bett.",
+  "phonemes": 33,
+  "thorsten_ids": 69,
+  "kerstin_ids": 63,
+  "stderr": "Missing phoneme from id map: ̧  (three times)",
+  "reading": [
+   "Both voices phonemise to the same 33 phonemes, so espeak decomposes natively",
+   "exactly as the wasm build does.",
+   "",
+   "Thorsten's map has the combining mark at 140, so he keeps all 33 and reaches",
+   "69 ids. Kerstin's map has no combining mark, so native piper DROPS it and",
+   "leaves the bare 'c' at 16 - giving 63 ids and, three times in one short",
+   "sentence, a plosive where the ich-Laut belongs. 'Ik', 'mökte', 'nikt'.",
+   "",
+   "Her map has the precomposed ç at 40. She predates the decomposing espeak",
+   "entirely, so 40 is the form she was trained on. Native piper is feeding a",
+   "2021 model a sequence it never saw in training and silently dropping the part",
+   "it cannot express."
+  ]
  }
 }

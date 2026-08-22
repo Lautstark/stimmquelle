@@ -57,7 +57,9 @@ var voices_default = {
     "",
     "Roughly a third of the English medium and high voices piper publishes cannot be handed on, and none of them says so anywhere a file name would show it. hfc_female, hfc_male and ryan in both qualities are all CC BY-NC-SA. That is the reason the rejected entries are in this file rather than left out of it.",
     "",
-    "browser_with_own_ids: what is expected once a consumer drives the inference itself via usePiperRuntime, rather than calling vits-web's predict(). Not a second answer to the same question - it is a different question, because that path takes ids from this model's own table. Nothing here flips to ok on it until it has been heard."
+    "browser_with_own_ids: what is expected once a consumer drives the inference itself via usePiperRuntime, rather than calling vits-web's predict(). Not a second answer to the same question - it is a different question, because that path takes ids from this model's own table. Nothing here flips to ok on it until it has been heard.",
+    "",
+    "browser_with_own_ids 'ok by measurement' means the ids reaching the model are the model's own and the audio is speech - checked against native piper's own dump. It does not mean anybody has listened. `browser` flips when a person says it sounds right, not when the arithmetic does."
   ],
   revised: "2026-08-22",
   checked: "2026-08-22",
@@ -202,8 +204,8 @@ var voices_default = {
       browser: "quality",
       container: "ok",
       proof: "container",
-      note: "Free to ship and fine in a container - she is mitreden's container default and is in vorlaut's. Published as low only, so no other file helps. Reading each model's own phoneme_id_map instead of vits-web's fixed table is what would bring her back, and it means owning the phonemizer glue rather than calling a library. Note the 16 kHz: vorlaut's device wants exactly that, so a low voice would need no resampling at all. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. Flipping it is a one-line change once vorlaut's ttscheck harness reports.",
-      browser_with_own_ids: "expected ok, not yet heard"
+      note: "Free to ship and fine in a container - she is mitreden's container default and is in vorlaut's. Published as low only, so no other file helps. Reading each model's own phoneme_id_map instead of vits-web's fixed table is what would bring her back, and it means owning the phonemizer glue rather than calling a library. Note the 16 kHz: vorlaut's device wants exactly that, so a low voice would need no resampling at all. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. The harness has reported: she speaks, 63 ids, nothing dropped, the ich-Laut at 40 where native piper leaves a bare plosive at 16. Native piper drops the combining mark her map lacks, so it says Ik, m\xF6kte, nikt - which means native is not the oracle here and cannot flip this either way. What is left is a human ear.",
+      browser_with_own_ids: "ok by measurement, not yet by ear"
     },
     {
       id: "en_US-john-medium",
@@ -243,7 +245,7 @@ var voices_default = {
       container: "ok",
       proof: "rule",
       note: "The second of the three German female voices piper publishes. At 20.6 MB it is the only one that is genuinely smaller than a medium model - low is not, despite the name. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. Flipping it is a one-line change once vorlaut's ttscheck harness reports.",
-      browser_with_own_ids: "expected ok, not yet heard"
+      browser_with_own_ids: "ok by measurement, not yet by ear"
     },
     {
       id: "de_DE-ramona-low",
@@ -264,7 +266,7 @@ var voices_default = {
       container: "ok",
       proof: "rule",
       note: "The third and last German female voice piper publishes. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. Flipping it is a one-line change once vorlaut's ttscheck harness reports.",
-      browser_with_own_ids: "expected ok, not yet heard"
+      browser_with_own_ids: "ok by measurement, not yet by ear"
     },
     {
       id: "de_DE-karlsson-low",
@@ -284,7 +286,7 @@ var voices_default = {
       browser: "quality",
       container: "ok",
       proof: "rule",
-      browser_with_own_ids: "expected ok, not yet heard",
+      browser_with_own_ids: "ok by measurement, not yet by ear",
       note: " The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. Flipping it is a one-line change once vorlaut's ttscheck harness reports."
     },
     {

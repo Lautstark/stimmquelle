@@ -7,10 +7,11 @@ import fixture from './phonemes.fixture.json' with { type: 'json' };
  * models' own `.onnx.json`. They are not derived from the code under test, and
  * re-deriving them from it would make every assertion below circular.
  */
-const { cases, thorsten, kerstin } = fixture as unknown as {
+const { cases, thorsten, kerstin, native_piper: native } = fixture as unknown as {
   cases: { text: string; phonemes: string[]; phoneme_ids: number[] }[];
   thorsten: { num_symbols: number; phoneme_id_map: Record<string, number[]> };
   kerstin: { num_symbols: number; phoneme_id_map: Record<string, number[]> };
+  native_piper: { text: string; thorsten_ids: number; kerstin_ids: number };
 };
 
 describe('reading ids from the model rather than from the phonemizer', () => {
@@ -84,5 +85,40 @@ describe('reading ids from the model rather than from the phonemizer', () => {
     const { dropped, exact } = remapPhonemeIds(['a', 'ʁ'], [1, 0, 10, 0, 99, 0, 2], bare);
     expect(dropped).toEqual(['ʁ']);
     expect(exact).toBe(false);
+  });
+});
+
+describe('where this deliberately disagrees with native piper', () => {
+  const one = cases.find(c => c.text === native.text)!;
+
+  it('reaches native’s length, so nothing is being added or lost', () => {
+    // The theory this replaced was that native kept a slot for the phoneme it
+    // could not map, and that our sequence was six tokens short. It is not:
+    // native drops the mark too, and lands on the same length we do. Pinned so
+    // the dead theory cannot be revived by someone counting tokens again.
+    expect(remapPhonemeIds(one.phonemes, one.phoneme_ids, kerstin.phoneme_id_map).ids)
+      .toHaveLength(native.kerstin_ids);
+    expect(one.phoneme_ids).toHaveLength(native.thorsten_ids);
+  });
+
+  it('puts the ich-Laut where native puts a plosive', () => {
+    // The whole disagreement, in three positions. Native piper drops the
+    // combining mark its map lacks and leaves the bare 'c' at 16 — "Ik",
+    // "mökte", "nikt". We compose to ç at 40, which is in her map, which means
+    // it is the form she was trained on.
+    const ç = kerstin.phoneme_id_map['ç'][0];
+    const c = kerstin.phoneme_id_map['c'][0];
+    const ours = remapPhonemeIds(one.phonemes, one.phoneme_ids, kerstin.phoneme_id_map).ids;
+    expect(ours.filter(i => i === ç)).toHaveLength(3);
+    expect(ours.filter(i => i === c)).toHaveLength(0);
+  });
+
+  it('leaves a model that has the mark alone, which is why the disagreement is safe', () => {
+    // Thorsten's map carries the combining mark, so nothing is composed and he
+    // comes out exactly as native does. The disagreement only ever touches a
+    // voice native cannot render properly in the first place.
+    const { ids, exact } = remapPhonemeIds(one.phonemes, one.phoneme_ids, thorsten.phoneme_id_map);
+    expect(exact).toBe(true);
+    expect(ids).toEqual(one.phoneme_ids);
   });
 });
