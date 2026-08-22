@@ -23,7 +23,7 @@
  * model with a stochastic duration predictor, and three renders of one sentence
  * give three different files. Identical *ids* is the property that carries.
  */
-import { byId, modelUrls } from './catalogue.js';
+import { byId, modelUrls, refuse, type Offering } from './catalogue.js';
 import { remapPhonemeIds, type PhonemeIdMap } from './phonemes.js';
 
 /** The Emscripten factory from `@diffusionstudio/piper-wasm`. */
@@ -218,13 +218,25 @@ export async function phonemise(text: string, espeakVoice: string): Promise<Phon
 // --- the whole thing -----------------------------------------------------------
 
 /**
- * Either a bare callback or `{ onProgress }`.
+ * Either a bare callback or the options object below.
  *
  * `speak()` next door takes a whole options object, so handing this one the
  * same object is the obvious slip. It used to fail with "onProgress is not a
  * function" from somewhere inside; now it either works or says which it wanted.
  */
-export type SynthesizeProgress = ((share: number) => void) | { onProgress?(share: number): void };
+export type SynthesizeProgress = ((share: number) => void) | SynthesizeOptions;
+
+/**
+ * How this path may be varied: progress, and the licence claim.
+ *
+ * `Offering` is here rather than alongside it because the attribution claim has
+ * to reach this function from `speak()` — both ask the licence question, and a
+ * claim that did not travel would have the second gate refuse what the first
+ * allowed.
+ */
+export interface SynthesizeOptions extends Offering {
+  onProgress?(share: number): void;
+}
 
 export interface Synthesised {
   readonly samples: Float32Array;
@@ -238,21 +250,44 @@ export interface Synthesised {
  * Text in, raw samples out, at whatever rate the model speaks.
  *
  * Levelling is a separate step on purpose — `postprocess` takes it from here.
+ *
+ * **The licence gate is asked here too, not only in `speak()`.** This function
+ * fetches models from Hugging Face on its own account, which makes it a place a
+ * licence can be broken, and for one commit it was: it checked only that the id
+ * was in the catalogue, so `en_US-hfc_female-medium` — the CC BY-NC-SA voice
+ * this whole repository exists because of — downloaded and spoke through it
+ * without anything asking. Being the lower-level of the two doors is not a
+ * reason to ask less; it is why it gets used by something that has not asked.
+ *
+ * The *runtime* half is deliberately not asked, and that is the difference
+ * between the two questions rather than a hole in this one. `browser` in the
+ * catalogue records what `@diffusionstudio/vits-web` can do, and this path
+ * exists precisely because it can do more — it is the route to the `low` and
+ * `x_low` voices vits-web cannot reach and to the five its `PATH_MAP` omits.
  */
 export async function synthesize(
   text: string, id: string, progress?: SynthesizeProgress,
 ): Promise<Synthesised> {
-  const r = need();
-  const onProgress = typeof progress === 'function' ? progress : progress?.onProgress;
-  if (progress !== undefined && onProgress === undefined) {
+  const options: SynthesizeOptions = typeof progress === 'function'
+    ? { onProgress: progress }
+    : progress ?? {};
+  // An object carrying keys but none this function knows is speak()'s options
+  // object, handed to the wrong one of two neighbours. `{}` and an object whose
+  // known keys are all undefined are not that — speak() builds exactly such an
+  // object when a caller asked for neither progress nor an attribution claim.
+  const known = ['onProgress', 'rendersAttribution'];
+  const keys = typeof progress === 'object' && progress !== null ? Object.keys(progress) : [];
+  if (keys.length && !keys.some(k => known.includes(k))) {
     throw new TypeError(
       'synthesize() takes a progress callback, or { onProgress }. It sits next '
       + 'to speak(), which takes a whole options object — passing speak\'s '
       + 'options here is the easy mistake and this is it being caught.',
     );
   }
-  const voice = byId(id);
-  if (!voice) throw new Error(`${id} is not in the catalogue, so it must not be fetched.`);
+  const refusal = refuse(id, null, options);
+  if (refusal) throw new Error(refusal);
+  const r = need();
+  const voice = byId(id)!;
   const urls = modelUrls(voice.id, 'browser')!;
 
   const configBytes = await cached(`${voice.id}.onnx.json`, urls.config);
@@ -261,7 +296,7 @@ export async function synthesize(
   const { phonemes, phonemeIds } = await phonemise(text, config.espeak.voice);
   const { ids, dropped, exact } = remapPhonemeIds(phonemes, phonemeIds, config.phoneme_id_map);
 
-  const model = await cached(`${voice.id}.onnx`, urls.onnx, onProgress);
+  const model = await cached(`${voice.id}.onnx`, urls.onnx, options.onProgress);
   const ort = await r.onnx();
   ort.env.allowLocalModels = false;
   ort.env.wasm.wasmPaths = r.wasmBase.endsWith('/') ? r.wasmBase : `${r.wasmBase}/`;

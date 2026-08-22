@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   attributionsFor, byId, CHECKED, displayName, isAllowed, LIBRARY, MIRRORS,
-  modelUrls, qualityOf, shippable, VOICES,
+  modelUrls, qualityOf, refuse, shippable, VOICES,
 } from '../src/index.js';
 
 /**
@@ -81,6 +81,28 @@ describe('the licensing rule', () => {
                `${v.id} must not be allowed`).toBe(false);
       }
     }
+  });
+
+  it('asks the licence question even of a caller that owns its own runtime', () => {
+    // `refuse(id, null, …)` is for a caller that drives piper itself and has
+    // therefore answered the runtime question for itself. It is not a way past
+    // the licence one — which is the whole distinction, and the one that was
+    // lost when synthesize() was given no gate at all.
+    for (const v of VOICES.filter(v => !v.licence.ship)) {
+      expect(refuse(v.id, null), `${v.id} must be refused with no runtime named`).toBeTruthy();
+    }
+    for (const v of VOICES.filter(v => v.licence.ship && v.licence.attribution)) {
+      expect(refuse(v.id, null)).toMatch(/owes an attribution/);
+      expect(refuse(v.id, null, { rendersAttribution: true })).toBeNull();
+    }
+  });
+
+  it('lets a runtime-owning caller reach what only vits-web could not', () => {
+    // The runtime half is genuinely optional and the licence half is not. This
+    // is the pair that says so: Kerstin is CC0 and refused in a browser only
+    // because @diffusionstudio/vits-web cannot phonemise her.
+    expect(refuse('de_DE-kerstin-low', 'browser')).toMatch(/does not speak/);
+    expect(refuse('de_DE-kerstin-low', null)).toBeNull();
   });
 
   it('refuses an id that is not in the catalogue', () => {

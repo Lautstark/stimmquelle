@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { phonemise, speak, synthesize, usePiperRuntime } from '../src/index.js';
+import { phonemise, speak, synthesize, usePiper, usePiperRuntime } from '../src/index.js';
 import fixture from './phonemes.fixture.json' with { type: 'json' };
 
 const { cases, thorsten, kerstin } = fixture as unknown as {
@@ -27,8 +27,10 @@ const config = (map: Record<string, number[]>, rate = 22050) => JSON.stringify({
 });
 
 let sessionInput: number[] = [];
+let fetched: string[] = [];
 
 function stub(map: Record<string, number[]>, phonemes: string[], phonemeIds: number[]) {
+  fetched = [];
   usePiperRuntime({
     wasmBase: '/vendor/',
     phonemizer: async () => ({
@@ -48,9 +50,12 @@ function stub(map: Record<string, number[]>, phonemes: string[], phonemeIds: num
         }),
       },
     } as never),
-    fetchModel: async url => new TextEncoder().encode(
-      url.endsWith('.json') ? config(map) : 'not-a-real-model',
-    ).buffer as ArrayBuffer,
+    fetchModel: async url => {
+      fetched.push(url);
+      return new TextEncoder().encode(
+        url.endsWith('.json') ? config(map) : 'not-a-real-model',
+      ).buffer as ArrayBuffer;
+    },
   });
 }
 
@@ -122,5 +127,65 @@ describe('the two entry points that sit next to each other', () => {
   it('says what phonemise wants rather than throwing an empty error', async () => {
     stub(thorsten.phoneme_id_map, one.phonemes, one.phoneme_ids);
     await expect(phonemise('Hallo', '')).rejects.toThrow(/espeak's language code/);
+  });
+});
+
+/**
+ * The licence rule holds at every door, not at the one somebody remembered.
+ *
+ * A failure here is a licence problem, not a broken test — the same rule as
+ * test/catalogue.test.ts, asserted where a model is actually fetched.
+ */
+describe('the licence gate on every door', () => {
+  const one = cases[0]!;
+
+  it('refuses an unshippable voice on the direct path, before fetching anything', async () => {
+    // Not hypothetical. synthesize() shipped for one commit checking only that
+    // an id was in the catalogue, so en_US-hfc_female-medium — CC BY-NC-SA, the
+    // voice this repository exists because of — downloaded and spoke through
+    // it, silently, exactly as it did the first time.
+    stub(thorsten.phoneme_id_map, one.phonemes, one.phoneme_ids);
+    await expect(synthesize('Hallo', 'piper:en_US-hfc_female-medium'))
+      .rejects.toThrow(/may not be shipped/);
+    expect(fetched, 'a voice that may not be shipped must not be fetched').toEqual([]);
+  });
+
+  it('withholds a voice owing an attribution until the caller claims it renders one', async () => {
+    stub(thorsten.phoneme_id_map, one.phonemes, one.phoneme_ids);
+    await expect(synthesize('Hallo', 'piper:de_DE-mls-medium'))
+      .rejects.toThrow(/owes an attribution/);
+    expect(fetched).toEqual([]);
+    await synthesize('Hallo', 'piper:de_DE-mls-medium', { rendersAttribution: true });
+    expect(fetched.length).toBeGreaterThan(0);
+  });
+
+  it('carries the attribution claim from speak() into synthesize()', async () => {
+    // Both doors ask, so the answer has to travel. If it did not, the second
+    // gate would refuse what the first allowed and every CC-BY voice would be
+    // unreachable through the front door for a reason nobody could see.
+    stub(thorsten.phoneme_id_map, one.phonemes, one.phoneme_ids);
+    const out = await speak(one.text, 'piper:de_DE-mls-medium',
+                            { rate: 16000, rendersAttribution: true });
+    expect(out.voice).toBe('piper:de_DE-mls-medium');
+  });
+
+  it('refuses a backend it does not speak instead of handing it to piper', async () => {
+    // speak() gated on `piper` while routing everything that was not azure to
+    // piper. CONTRACT.md §4 already reserves `elevenlabs`, so an elevenlabs: id
+    // — or a typo'd pipe: — reached vits-web with no licence asked at all.
+    let asked: string | null = null;
+    usePiper(async () => ({
+      predict: async (input: { voiceId: string }) => {
+        asked = input.voiceId;
+        return new Blob([]);
+      },
+      stored: async () => [],
+      flush: async () => {},
+      PATH_MAP: { 'en_US-hfc_female-medium': 'x' },
+    } as never));
+    for (const vid of ['elevenlabs:en_US-hfc_female-medium', 'pipe:en_US-hfc_female-medium']) {
+      await expect(speak('Hallo', vid), vid).rejects.toThrow(/is not a backend/);
+    }
+    expect(asked, 'vits-web must not be asked for a voice nothing checked').toBeNull();
   });
 });

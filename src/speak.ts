@@ -10,7 +10,7 @@
  * is consulted before anything is fetched. An id that reaches Hugging Face
  * unchecked is a licensing decision made by whoever typed it.
  */
-import { isAllowed, byId, parseVoiceId, type Offering } from './catalogue.js';
+import { parseVoiceId, refuse, type Offering } from './catalogue.js';
 import { encodeWav, postprocess, type LevelOptions, type Levelled } from './level.js';
 import { hasPiperRuntime, synthesize } from './synthesize.js';
 
@@ -215,15 +215,19 @@ export async function speak(text: string, vid: string, options: SpeakOptions = {
   const backend = parsed?.backend ?? 'piper';
   const model = parsed?.model ?? vid;
 
-  if (backend === 'piper' && !isAllowed(model, 'browser', options)) {
-    const known = byId(model);
-    throw new Error(
-      !known ? `${model} is not in the catalogue, so it must not be fetched.`
-      : !known.licence.ship ? `${model} may not be shipped: ${known.licence.name}.`
-      : known.browser !== 'ok' ? `${model} does not speak in a browser: ${known.browser}.`
-      : `${model} is ${known.licence.name} and owes an attribution. Render it, `
-        + 'then pass { rendersAttribution: true }.',
-    );
+  // Everything that is not Azure is handed to piper further down, so everything
+  // that is not Azure has to pass the licence gate here. Naming only `piper`
+  // was enough exactly once and then silently stopped being: CONTRACT.md §4
+  // already reserves `elevenlabs`, and an `elevenlabs:` id — like a typo'd
+  // `pipe:` — reached vits-web with no licence asked at all. An unknown backend
+  // is refused rather than assumed, because assuming is what fetched the model.
+  if (backend !== 'piper' && backend !== 'azure') {
+    throw new Error(`${backend}: is not a backend this package speaks. Use piper: or azure:.`);
+  }
+
+  if (backend === 'piper') {
+    const refusal = refuse(model, 'browser', options);
+    if (refusal) throw new Error(refusal);
   }
 
   const started = performance.now();
@@ -236,9 +240,15 @@ export async function speak(text: string, vid: string, options: SpeakOptions = {
   // for the voices that already worked the ids are identical either way —
   // asserted in test/phonemes.test.ts, which is what makes the switch free.
   if (backend === 'piper' && hasPiperRuntime()) {
-    const spoken = await synthesize(text, model, options.onProgress
-      ? share => options.onProgress!({ url: model, loaded: share, total: 1, share })
-      : undefined);
+    const spoken = await synthesize(text, model, {
+      // Carried through rather than defaulted: `synthesize` asks the licence
+      // question again on its own account, and it must get the same answer this
+      // call already got rather than a stricter one.
+      rendersAttribution: options.rendersAttribution,
+      onProgress: options.onProgress
+        ? share => options.onProgress!({ url: model, loaded: share, total: 1, share })
+        : undefined,
+    });
     const synthesisedAt = performance.now();
     const result = postprocess(encodeWav(spoken.samples, spoken.rate), options);
     return {

@@ -390,9 +390,21 @@ function byId(id) {
   const model = parseVoiceId(id)?.model ?? id;
   return VOICES.find((v) => v.id === model);
 }
+function refuse(id, runtime2, offering = {}) {
+  const model = parseVoiceId(id)?.model ?? id;
+  const voice = byId(model);
+  if (!voice) return `${model} is not in the catalogue, so it must not be fetched.`;
+  if (!voice.licence.ship) return `${model} may not be shipped: ${voice.licence.name}.`;
+  if (voice.licence.attribution && !offering.rendersAttribution) {
+    return `${model} is ${voice.licence.name} and owes an attribution. Render it, then pass { rendersAttribution: true }.`;
+  }
+  if (runtime2 && voice[runtime2] !== "ok") {
+    return `${model} does not speak in a ${runtime2}: ${voice[runtime2]}.`;
+  }
+  return null;
+}
 function isAllowed(id, runtime2, offering = {}) {
-  const voice = byId(id);
-  return !!voice && voice.licence.ship && voice[runtime2] === "ok" && (offering.rendersAttribution || !voice.licence.attribution);
+  return refuse(id, runtime2, offering) === null;
 }
 function parseVoiceId(id) {
   const at = id.indexOf(":");
@@ -902,21 +914,24 @@ async function phonemise(text, espeakVoice) {
   return { phonemes: parsed.phonemes, phonemeIds: parsed.phoneme_ids };
 }
 async function synthesize(text, id, progress) {
-  const r = need();
-  const onProgress = typeof progress === "function" ? progress : progress?.onProgress;
-  if (progress !== void 0 && onProgress === void 0) {
+  const options = typeof progress === "function" ? { onProgress: progress } : progress ?? {};
+  const known = ["onProgress", "rendersAttribution"];
+  const keys = typeof progress === "object" && progress !== null ? Object.keys(progress) : [];
+  if (keys.length && !keys.some((k) => known.includes(k))) {
     throw new TypeError(
       "synthesize() takes a progress callback, or { onProgress }. It sits next to speak(), which takes a whole options object \u2014 passing speak's options here is the easy mistake and this is it being caught."
     );
   }
+  const refusal = refuse(id, null, options);
+  if (refusal) throw new Error(refusal);
+  const r = need();
   const voice = byId(id);
-  if (!voice) throw new Error(`${id} is not in the catalogue, so it must not be fetched.`);
   const urls = modelUrls(voice.id, "browser");
   const configBytes = await cached(`${voice.id}.onnx.json`, urls.config);
   const config = JSON.parse(new TextDecoder().decode(configBytes));
   const { phonemes, phonemeIds } = await phonemise(text, config.espeak.voice);
   const { ids, dropped, exact } = remapPhonemeIds(phonemes, phonemeIds, config.phoneme_id_map);
-  const model = await cached(`${voice.id}.onnx`, urls.onnx, onProgress);
+  const model = await cached(`${voice.id}.onnx`, urls.onnx, options.onProgress);
   const ort = await r.onnx();
   ort.env.allowLocalModels = false;
   ort.env.wasm.wasmPaths = r.wasmBase.endsWith("/") ? r.wasmBase : `${r.wasmBase}/`;
@@ -1012,15 +1027,22 @@ async function speak(text, vid, options = {}) {
   const parsed = parseVoiceId(vid);
   const backend = parsed?.backend ?? "piper";
   const model = parsed?.model ?? vid;
-  if (backend === "piper" && !isAllowed(model, "browser", options)) {
-    const known = byId(model);
-    throw new Error(
-      !known ? `${model} is not in the catalogue, so it must not be fetched.` : !known.licence.ship ? `${model} may not be shipped: ${known.licence.name}.` : known.browser !== "ok" ? `${model} does not speak in a browser: ${known.browser}.` : `${model} is ${known.licence.name} and owes an attribution. Render it, then pass { rendersAttribution: true }.`
-    );
+  if (backend !== "piper" && backend !== "azure") {
+    throw new Error(`${backend}: is not a backend this package speaks. Use piper: or azure:.`);
+  }
+  if (backend === "piper") {
+    const refusal = refuse(model, "browser", options);
+    if (refusal) throw new Error(refusal);
   }
   const started = performance.now();
   if (backend === "piper" && hasPiperRuntime()) {
-    const spoken2 = await synthesize(text, model, options.onProgress ? (share) => options.onProgress({ url: model, loaded: share, total: 1, share }) : void 0);
+    const spoken2 = await synthesize(text, model, {
+      // Carried through rather than defaulted: `synthesize` asks the licence
+      // question again on its own account, and it must get the same answer this
+      // call already got rather than a stricter one.
+      rendersAttribution: options.rendersAttribution,
+      onProgress: options.onProgress ? (share) => options.onProgress({ url: model, loaded: share, total: 1, share }) : void 0
+    });
     const synthesisedAt = performance.now();
     const result2 = postprocess(encodeWav(spoken2.samples, spoken2.rate), options);
     return {
@@ -1083,6 +1105,7 @@ export {
   phonemise,
   postprocess,
   qualityOf,
+  refuse,
   remapPhonemeIds,
   resample,
   shippable,

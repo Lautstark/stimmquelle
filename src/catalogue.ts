@@ -75,14 +75,46 @@ export function byId(id: string): Voice | undefined {
 }
 
 /**
- * Is this voice allowed here? The question `speak()` must ask before it fetches
+ * Why this voice may not be used, in words a caller can throw, or `null` if it
+ * may.
+ *
+ * One place, because the alternative is what happened: `speak()` carried the
+ * whole rule and `synthesize()` carried none of it, so the newer of the two
+ * doors fetched a CC BY-NC-SA model without asking anything. A rule enforced at
+ * one call site is a rule that holds until somebody adds a second call site,
+ * and adding one is not the kind of change anybody reviews for licensing.
+ *
+ * **The licence half is never optional.** The runtime half is, and that is not
+ * a softening of the same idea: `browser` is an answer about
+ * `@diffusionstudio/vits-web`, not about every possible way to run a model, so
+ * a caller that drives piper itself has already answered it for itself. Pass
+ * `null` to ask only the licence question — never to skip it.
+ */
+export function refuse(id: string, runtime: Runtime | null, offering: Offering = {}): string | null {
+  const model = parseVoiceId(id)?.model ?? id;
+  const voice = byId(model);
+  if (!voice) return `${model} is not in the catalogue, so it must not be fetched.`;
+  if (!voice.licence.ship) return `${model} may not be shipped: ${voice.licence.name}.`;
+  // Asked before the runtime question rather than after it: an attribution is
+  // owed in every runtime, so a voice failing both should be told the half that
+  // does not change when it is asked somewhere else.
+  if (voice.licence.attribution && !offering.rendersAttribution) {
+    return `${model} is ${voice.licence.name} and owes an attribution. Render it, `
+      + 'then pass { rendersAttribution: true }.';
+  }
+  if (runtime && voice[runtime] !== 'ok') {
+    return `${model} does not speak in a ${runtime}: ${voice[runtime]}.`;
+  }
+  return null;
+}
+
+/**
+ * Is this voice allowed here? The question anything must ask before it fetches
  * anything, because an id that reaches Hugging Face unchecked is a licensing
  * decision made by whoever typed it.
  */
 export function isAllowed(id: string, runtime: Runtime, offering: Offering = {}): boolean {
-  const voice = byId(id);
-  return !!voice && voice.licence.ship && voice[runtime] === 'ok'
-    && (offering.rendersAttribution || !voice.licence.attribution);
+  return refuse(id, runtime, offering) === null;
 }
 
 /** `piper:de_DE-thorsten-medium` -> its two halves. `null` if it has no backend. */
