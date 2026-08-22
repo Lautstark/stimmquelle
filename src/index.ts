@@ -14,7 +14,7 @@
  */
 export * from './catalogue.js';
 export {
-  MEASURE_RATE, PIPELINE_VERSION, TARGET_LUFS, TARGET_PEAK_DBTP, TRIM,
+  MEASURE_RATE, PIPELINE_VERSION, TARGET_LUFS, TARGET_PEAK_DBTP, TRIM, VERSION,
 } from './contract.js';
 export {
   decodeWav, encodeWav, fadeEnds, integratedLufs, pad, postprocess, resample,

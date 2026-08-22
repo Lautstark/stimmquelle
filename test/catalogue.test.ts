@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import {
   attributionsFor, byId, CHECKED, displayName, isAllowed, LIBRARY, MIRRORS,
-  modelUrls, qualityOf, refuse, shippable, VOICES,
+  modelUrls, qualityOf, refuse, shippable, VERSION, VOICES,
 } from '../src/index.js';
 
 /**
@@ -170,6 +171,14 @@ describe('the catalogue itself', () => {
     expect(CHECKED).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(LIBRARY.version).toBeTruthy();
     expect(MIRRORS.browser).toMatch(/^https:\/\//);
+  });
+
+  it('says which version it is, and agrees with package.json about it', () => {
+    // A vendored dist/browser/index.js has no package.json beside it, so the
+    // constant is what a copy of this uses to identify itself. The two live in
+    // files that cannot read each other, which is the whole reason for the test.
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    expect(VERSION).toBe(pkg.version);
   });
 
   it('has no duplicate ids', () => {

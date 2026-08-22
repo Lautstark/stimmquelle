@@ -34,6 +34,19 @@ export const TRIM = Object.freeze({
 export const MEASURE_RATE = 48000;
 
 /**
+ * What this package is, so a copy of it can say so.
+ *
+ * mitreden has no package manager and vendors `dist/browser/index.js` by hand,
+ * which means the one thing it cannot otherwise answer is which version it has.
+ * A file that cannot identify itself gets updated by whoever remembers.
+ *
+ * Written down here rather than read from `package.json`, for the same reason
+ * every other constant is: the bundle has no disk. A test ties the two together,
+ * because they live in files that cannot read each other.
+ */
+export const VERSION = '2.0.0';
+
+/**
  * Bumped whenever §1 or §2 of the contract changes.
  *
  * It goes in the fingerprint, so bumping it is what makes every consumer

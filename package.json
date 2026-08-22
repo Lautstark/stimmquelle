@@ -1,6 +1,6 @@
 {
   "name": "@lautstark/stimmquelle",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "type": "module",
   "description": "Piper voices for German AAC tools: which may be shipped, which speak in a browser, and the loudness contract both halves of a talker agree on.",
   "license": "MIT",
@@ -31,6 +31,7 @@
     "src",
     "voices.json",
     "CONTRACT.md",
+    "CHANGELOG.md",
     "README.md",
     "LICENSE"
   ],

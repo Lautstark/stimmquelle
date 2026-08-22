@@ -385,6 +385,14 @@ range for a file whose whole job is being the audited answer.
 npm install github:Lautstark/stimmquelle#<commit-sha>
 ```
 
+Which means an update is somebody moving that sha deliberately, and nothing here
+reaches a consumer by itself. [`CHANGELOG.md`](CHANGELOG.md) is what to read when
+moving it — it says what changed and, where the API moved, exactly what to edit.
+
+`VERSION` is exported for the copy that has no package manager: mitreden vendors
+`dist/browser/index.js` by hand, and a file that cannot say which version it is
+gets updated by whoever remembers.
+
 ```ts
 import { shippable, isAllowed, attributionsFor, modelUrls } from '@lautstark/stimmquelle';
 
@@ -464,7 +472,7 @@ npm test
 npm run build
 ```
 
-107 tests. They are the rules made executable rather than a description of the
+108 tests. They are the rules made executable rather than a description of the
 module. Documentation is the weakest form of enforcement: all three of the prose
 statements of the licensing rule were correct on the day a CC BY-NC-SA voice
 reached a browser build, and the rule was correct in this README on the day
