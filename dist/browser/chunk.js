@@ -58,7 +58,9 @@ var voices_default = {
     "",
     "browser_with_own_ids: what is expected once a consumer drives the inference itself via usePiperRuntime, rather than calling vits-web's predict(). Not a second answer to the same question - it is a different question, because that path takes ids from this model's own table. Nothing here flips to ok on it until it has been heard.",
     "",
-    "browser_with_own_ids 'ok by measurement' means the ids reaching the model are the model's own and the audio is speech - checked against native piper's own dump. It does not mean anybody has listened. `browser` flips when a person says it sounds right, not when the arithmetic does."
+    "browser_with_own_ids 'ok by measurement' means the ids reaching the model are the model's own and the audio is speech - checked against native piper's own dump. It does not mean anybody has listened. `browser` flips when a person says it sounds right, not when the arithmetic does.",
+    "",
+    'recommended: one voice per language-and-gender slot, so a picker can show four and keep the rest behind "more voices". It is an editorial choice and not a runtime or licence answer - `recommended_why` says why that one, so the next person argues with the reason rather than guessing at it. Two of the four need usePiperRuntime: vits-web cannot speak Kerstin and cannot fetch John.'
   ],
   revised: "2026-08-22",
   checked: "2026-08-22",
@@ -86,7 +88,9 @@ var voices_default = {
       },
       browser: "ok",
       proof: "spike, vorlaut, container",
-      note: "The default in both browser builds, and the only single German voice that speaks in a tab."
+      note: "The default in both browser builds, and the only single German voice that speaks in a tab.",
+      recommended: true,
+      recommended_why: "German male. Not thorsten-high, which is 114 MB against 63 for a difference a tablet speaker does not carry; not thorsten_emotional, whose moods a picker would have to expose before it made sense."
     },
     {
       id: "de_DE-thorsten-high",
@@ -159,7 +163,9 @@ var voices_default = {
         ship: true
       },
       browser: "ok",
-      proof: "spike, vorlaut, container"
+      proof: "spike, vorlaut, container",
+      recommended: true,
+      recommended_why: "English female. LJ Speech is equally free and equally good, but it is an audiobook corpus rather than a person, and a picker showing a name reads better with Kristin."
     },
     {
       id: "en_US-ljspeech-medium",
@@ -196,7 +202,9 @@ var voices_default = {
       browser: "quality",
       proof: "container",
       note: "Free to ship and fine in a container - she is mitreden's container default and is in vorlaut's. Published as low only, so no other file helps. Reading each model's own phoneme_id_map instead of vits-web's fixed table is what would bring her back, and it means owning the phonemizer glue rather than calling a library. Note the 16 kHz: vorlaut's device wants exactly that, so a low voice would need no resampling at all. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. The harness has reported: she speaks, 63 ids, nothing dropped, the ich-Laut at 40 where native piper leaves a bare plosive at 16. Native piper drops the combining mark her map lacks, so it says Ik, m\xF6kte, nikt - which means native is not the oracle here and cannot flip this either way. What is left is a human ear.",
-      browser_with_own_ids: "ok by measurement, not yet by ear"
+      browser_with_own_ids: "ok by measurement, not yet by ear",
+      recommended: true,
+      recommended_why: "German female, and the only licence-clear one piper publishes - Eva K and Ramona both have cards naming no licence. Needs usePiperRuntime, and needs somebody to have heard her."
     },
     {
       id: "en_US-john-medium",
@@ -214,7 +222,9 @@ var voices_default = {
       },
       browser: "reach",
       proof: "container",
-      note: "Not missing from the mirror - it is on both, at the byte count above, and both container images fetch it successfully. vits-web cannot have it: predict() looks the id up in PATH_MAP, finds nothing, and asks the mirror for 'undefined.json'. voices() advertises it anyway. mitreden's docs/spike/README.md recorded this as missing files, which was wrong and has been corrected there."
+      note: "Not missing from the mirror - it is on both, at the byte count above, and both container images fetch it successfully. vits-web cannot have it: predict() looks the id up in PATH_MAP, finds nothing, and asks the mirror for 'undefined.json'. voices() advertises it anyway. mitreden's docs/spike/README.md recorded this as missing files, which was wrong and has been corrected there.",
+      recommended: true,
+      recommended_why: "English male, and the only licence-clear one - ryan and hfc_male are both CC BY-NC-SA. Needs usePiperRuntime, which fetches from the mirror rather than vits-web PATH_MAP."
     },
     {
       id: "de_DE-eva_k-x_low",
@@ -999,7 +1009,11 @@ async function azureVoices(o) {
     // Nothing is downloaded and nothing is kept: a cloud voice needs the
     // network for every sentence instead of once for the model.
     downloadBytes: 0,
-    needsKey: true
+    needsKey: true,
+    // Azure publishes hundreds and this package has no opinion on which to
+    // put in front of somebody. The catalogue's picks are about the four
+    // voices it can actually vouch for.
+    recommended: false
   })).sort((a, b) => a.id.localeCompare(b.id));
 }
 async function speak(text, vid, options = {}) {

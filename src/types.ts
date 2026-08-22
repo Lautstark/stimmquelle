@@ -75,6 +75,16 @@ export interface Voice {
   readonly browser: RuntimeStatus;
   /** How the runtime answers were established: spike, vorlaut, container, rule. */
   readonly proof: string;
+  /**
+   * The one voice to offer for this language-and-gender slot, so a picker can
+   * show four and keep the rest behind "more voices".
+   *
+   * **Editorial, not a runtime or licence answer.** `recommended_why` carries
+   * the reasoning, because a bare flag is a decision nobody can argue with —
+   * which is the same failure the `proof` field exists to prevent one field up.
+   */
+  readonly recommended?: boolean;
+  readonly recommended_why?: string;
   readonly note?: string;
 }
 

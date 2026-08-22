@@ -120,3 +120,53 @@ describe('Azure, which is there only when a key is', () => {
     await expect(listVoices({ azure: key })).rejects.toThrow(/Azure said 401/);
   });
 });
+
+/**
+ * The four picks. Editorial rather than derived, so what is asserted here is
+ * that the editing is coherent — one per slot, each one actually offerable, each
+ * with its reasoning attached.
+ */
+describe('the recommended four', () => {
+  const picks = VOICES.filter(v => v.recommended);
+
+  it('covers each language-and-gender slot exactly once', () => {
+    const slots = picks.map(v => `${v.lang} ${v.gender}`);
+    expect([...slots].sort()).toEqual(['de female', 'de male', 'en female', 'en male']);
+    expect(new Set(slots).size, 'two voices claiming one slot').toBe(slots.length);
+  });
+
+  it('never recommends a voice that may not be shipped', () => {
+    // The flag is editorial and the licence is not. A picker leading with a
+    // voice the gate then refuses would be the worst version of both.
+    for (const v of picks) {
+      expect(v.licence.ship, `${v.id} is recommended and unshippable`).toBe(true);
+    }
+  });
+
+  it('says why each one, so the next person argues rather than guesses', () => {
+    for (const v of picks) expect(v.recommended_why, `${v.id}`).toBeTruthy();
+  });
+
+  it('filters down to what a picker shows first', async () => {
+    const shown = await listVoices({ recommended: true, rendersAttribution: true });
+    expect(shown.every(v => v.recommended)).toBe(true);
+    // Only two are reachable through vits-web today: Kerstin needs the phoneme
+    // remap and John is missing from its PATH_MAP. Both need usePiperRuntime,
+    // and that gap is the honest state of the four rather than a bug here.
+    expect(shown.map(v => v.id)).toEqual([
+      'piper:de_DE-thorsten-medium', 'piper:en_US-kristin-medium',
+    ]);
+  });
+
+  it('reaches all four once the caller drives piper itself', () => {
+    const reachable = picks.filter(v => refuse(v.id, { ownsInference: true }) === null);
+    expect(reachable).toHaveLength(4);
+  });
+
+  it('leaves Azure unrecommended, having no opinion on hundreds of voices', async () => {
+    azureServes(azureList);
+    const azure = (await listVoices({ azure: key })).filter(v => v.source === 'azure');
+    expect(azure.length).toBeGreaterThan(0);
+    expect(azure.every(v => !v.recommended)).toBe(true);
+  });
+});

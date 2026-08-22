@@ -313,6 +313,30 @@ Speech API, so it would be a field with nothing behind it.
 `piperVoices()` is the same thing without the network, for a page with no key.
 The lower-level catalogue — `shippable`, `byId`, `displayName` — is unchanged.
 
+**`listVoices({ recommended: true })` gives the four.** One voice per
+language-and-gender slot, so a picker can lead with four and keep the rest behind
+*more voices*:
+
+| slot | voice | |
+| --- | --- | --- |
+| German male | `de_DE-thorsten-medium` | speaks today |
+| English female | `en_US-kristin-medium` | speaks today |
+| German female | `de_DE-kerstin-low` | needs `usePiperRuntime`, and a listen |
+| English male | `en_US-john-medium` | needs `usePiperRuntime` |
+
+The flag is **editorial, not a runtime or licence answer**, so each carries a
+`recommended_why` — a bare flag is a decision nobody can argue with, which is the
+failure `proof` exists to prevent one field up. Thorsten high is left out for
+114 MB against 63; `thorsten_emotional` because its moods would have to be
+exposed first; `de_DE-mls-medium` because 236 speakers have no name a picker can
+show. A test holds the four to one per slot and refuses to recommend anything
+unshippable.
+
+Two of the four need the direct-piper path, and that is the honest state of it:
+**through vits-web alone there is no German female voice and no English male
+one**, because the only licence-clear candidates for those slots are exactly the
+two vits-web cannot reach.
+
 ### What it deliberately is not
 
 - **not a storage layer** — no phrases, no collections, no cache beyond the
@@ -440,7 +464,7 @@ npm test
 npm run build
 ```
 
-101 tests. They are the rules made executable rather than a description of the
+107 tests. They are the rules made executable rather than a description of the
 module. Documentation is the weakest form of enforcement: all three of the prose
 statements of the licensing rule were correct on the day a CC BY-NC-SA voice
 reached a browser build, and the rule was correct in this README on the day

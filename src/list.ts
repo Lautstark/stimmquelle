@@ -38,6 +38,12 @@ export interface Offered {
   readonly needsKey: boolean;
   /** The notice owed wherever this voice's audio is used, when one is owed. */
   readonly attribution?: string;
+  /**
+   * The pick for this language-and-gender slot. A picker can show these four
+   * and put the rest behind "more voices". Always false for a cloud backend,
+   * which publishes hundreds and about which this package has no opinion.
+   */
+  readonly recommended: boolean;
 }
 
 export interface ListOptions extends Offering {
@@ -45,6 +51,8 @@ export interface ListOptions extends Offering {
   lang?: string;
   /** `female` or `male`. A `mixed` corpus matches neither. */
   gender?: string;
+  /** Only the pick for each slot — what a picker shows before "more voices". */
+  recommended?: boolean;
   /** Include Azure's voices, which needs a key and a request. Omitted, none are. */
   azure?: AzureOptions;
 }
@@ -55,6 +63,7 @@ const language = (s: string): string => s.toLowerCase().replace(/_/g, '-').split
 function matches(v: Offered, o: ListOptions): boolean {
   if (o.lang && language(v.locale) !== language(o.lang)) return false;
   if (o.gender && v.gender !== o.gender.toLowerCase()) return false;
+  if (o.recommended && !v.recommended) return false;
   return true;
 }
 
@@ -69,6 +78,7 @@ export function piperVoices(offering: Offering = {}): readonly Offered[] {
     source: 'piper' as const,
     downloadBytes: v.bytes,
     needsKey: false,
+    recommended: v.recommended === true,
     ...(v.licence.attribution ? { attribution: v.licence.attribution } : {}),
   }));
 }

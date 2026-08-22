@@ -193,6 +193,10 @@ export async function azureVoices(o: AzureOptions): Promise<readonly Offered[]> 
       // network for every sentence instead of once for the model.
       downloadBytes: 0,
       needsKey: true,
+      // Azure publishes hundreds and this package has no opinion on which to
+      // put in front of somebody. The catalogue's picks are about the four
+      // voices it can actually vouch for.
+      recommended: false,
     }))
     .sort((a, b) => a.id.localeCompare(b.id));
 }

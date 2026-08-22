@@ -51,6 +51,7 @@ var language = (s) => s.toLowerCase().replace(/_/g, "-").split("-")[0];
 function matches(v, o) {
   if (o.lang && language(v.locale) !== language(o.lang)) return false;
   if (o.gender && v.gender !== o.gender.toLowerCase()) return false;
+  if (o.recommended && !v.recommended) return false;
   return true;
 }
 function piperVoices(offering = {}) {
@@ -63,6 +64,7 @@ function piperVoices(offering = {}) {
     source: "piper",
     downloadBytes: v.bytes,
     needsKey: false,
+    recommended: v.recommended === true,
     ...v.licence.attribution ? { attribution: v.licence.attribution } : {}
   }));
 }
