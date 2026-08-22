@@ -21,6 +21,10 @@ export {
   toPcm16, trim, truePeakDb,
   type Levelled, type LevelOptions,
 } from './level.js';
+export {
+  listVoices, piperVoices,
+  type ListOptions, type Offered, type VoiceSource,
+} from './list.js';
 export { DEFAULT_BITRATE, encodeMp3 } from './mp3.js';
 export { remapPhonemeIds, type PhonemeIdMap, type Remapped } from './phonemes.js';
 export {

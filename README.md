@@ -283,9 +283,35 @@ silence and reports nothing. On a talker, that is a key a child presses that
 makes no sound. `'44100'` happened to work by coercion, which is worse than
 either extreme, so the check is on the type as well as the value.
 
-### Ask about a voice
+### Ask about a voice, or list them for a picker
 
-The catalogue, above.
+`listVoices` is the one call a picker needs. Every voice comes back in the same
+shape whatever renders it, so a product filtering by language or gender does not
+have to know that piper writes `de_DE` and Azure writes `de-DE`, or that one
+downloads 63 MB once and the other needs the network every sentence.
+
+```ts
+import { listVoices } from '@lautstark/stimmquelle';
+
+const voices = await listVoices({ lang: 'de', gender: 'female', azure: { key, region } });
+// → [{ id, name, lang, locale, gender, source, downloadBytes, needsKey, attribution? }]
+```
+
+Azure appears **only when a key is passed**, and a key that does not work throws
+rather than quietly returning the piper voices alone — a picker silently short of
+half its voices fails exactly the way a wrong licence does, and only the person
+who typed the key can fix it.
+
+`id` is precisely what `speak()` takes, so a picker's selection is a voice id and
+nothing has to be translated. The licence gate is not re-applied here because
+`shippable` already applied it: a voice in this list is a voice `speak()` will
+accept, and a test asserts the two cannot disagree.
+
+There is no `age` filter. piper does not publish one and neither does the Web
+Speech API, so it would be a field with nothing behind it.
+
+`piperVoices()` is the same thing without the network, for a page with no key.
+The lower-level catalogue — `shippable`, `byId`, `displayName` — is unchanged.
 
 ### What it deliberately is not
 
@@ -359,6 +385,8 @@ const notices = attributionsFor(usedVoiceIds);
 not in the catalogue, because a machine that cannot render a WAV still has to
 know what the file would have been called.
 
+**Choosing.** `listVoices`, `piperVoices`, `azureVoices`.
+
 **Speaking.** `speak`, `asBlob`, `usePiper`, `downloaded`, `forget`, and for the
 direct path `usePiperRuntime`, `synthesize`, `phonemise`, `remapPhonemeIds`,
 `hasPiperRuntime`, `downloadedModels`, `forgetModels`. Azure's own helpers —
@@ -412,7 +440,7 @@ npm test
 npm run build
 ```
 
-90 tests. They are the rules made executable rather than a description of the
+101 tests. They are the rules made executable rather than a description of the
 module. Documentation is the weakest form of enforcement: all three of the prose
 statements of the licensing rule were correct on the day a CC BY-NC-SA voice
 reached a browser build, and the rule was correct in this README on the day

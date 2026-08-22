@@ -12,6 +12,7 @@
  */
 import { parseVoiceId, refuse, type Offering } from './catalogue.js';
 import { encodeWav, postprocess, type LevelOptions, type Levelled } from './level.js';
+import type { Offered } from './list.js';
 import { hasPiperRuntime, synthesize } from './synthesize.js';
 
 // --- piper -------------------------------------------------------------------
@@ -159,19 +160,41 @@ async function synthesizeAzure(text: string, voice: string, o: AzureOptions): Pr
   return new Uint8Array(await response.arrayBuffer());
 }
 
-/** The Azure voices for these locales. Not cached — a page that keeps state can. */
-export async function azureVoices(o: AzureOptions): Promise<string[]> {
+/**
+ * The Azure voices for these locales. Not cached — a page that keeps state can.
+ *
+ * Returns the same shape the piper catalogue does, because a picker wants one
+ * shape and Azure's list already carries what it needs. It used to return bare
+ * `ShortName` strings and throw the rest away, which meant every consumer that
+ * wanted to show a voice's name or filter by gender either re-fetched the list
+ * or did without — the API had already answered and the answer was discarded.
+ */
+export async function azureVoices(o: AzureOptions): Promise<readonly Offered[]> {
   const response = await fetch(voiceList(o.region), {
     headers: { 'Ocp-Apim-Subscription-Key': o.key },
   });
   if (!response.ok) throw new Error(`Azure said ${response.status} to the voice list.`);
   const want = (o.languages ?? ['de-DE', 'en-US']).map(l => l.toLowerCase());
-  const all = (await response.json()) as { Locale?: string; ShortName: string }[];
+  const all = (await response.json()) as {
+    Locale?: string; ShortName: string; LocalName?: string;
+    DisplayName?: string; Gender?: string;
+  }[];
   return all
     .filter(v => want.some(w => (v.Locale ?? '').toLowerCase() === w
                               || (v.Locale ?? '').toLowerCase().startsWith(`${w}-`)))
-    .map(v => v.ShortName)
-    .sort();
+    .map(v => ({
+      id: `azure:${v.ShortName}`,
+      name: v.LocalName ?? v.DisplayName ?? v.ShortName,
+      lang: (v.Locale ?? '').split('-')[0],
+      locale: v.Locale ?? '',
+      gender: (v.Gender ?? '').toLowerCase(),
+      source: 'azure' as const,
+      // Nothing is downloaded and nothing is kept: a cloud voice needs the
+      // network for every sentence instead of once for the model.
+      downloadBytes: 0,
+      needsKey: true,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
 }
 
 // --- What a product calls ----------------------------------------------------
