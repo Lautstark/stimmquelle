@@ -80,7 +80,15 @@ second decimal on every row tried.
 ### Permitted device extras
 
 Neither changes measured loudness, so neither is part of the contract. A
-consumer applies them after levelling and records why:
+consumer asks for them and records why.
+
+**They are applied to the trimmed signal, before the measurement** — the same
+order as ffmpeg's filter chain, and the order the reference implementation uses.
+Not after the gain: a consumer implementing from this document alone would
+otherwise measure a different signal than the reference does, and the two would
+disagree by however much the extras move the level. (They barely do, which is
+why they are permitted at all — but "barely" is not a thing to leave to two
+readings of a sentence.)
 
 - a short fade at each end, against clicks on a class-D amplifier — vorlaut uses
   12 ms

@@ -1,28 +1,141 @@
 {
+ "note": [
+  "The only outside opinion this family has left.",
+  "",
+  "Every other check on the loudness chain measures its output with the same",
+  "function that decided the gain, which is circular: a wrong BS.1770 would",
+  "satisfy all of them. These came from ffmpeg reading files this package wrote.",
+  "",
+  "The tones cover the K-weighting where it is not flat, which is the point of",
+  "them: 440 Hz is off 1 kHz, 60 Hz is down the high-pass skirt and 10 kHz is up",
+  "on the head shelf. A merely plausible filter passes 1 kHz and fails the ends.",
+  "",
+  "The 60 Hz and 10 kHz tones, the true-peak references and the resampling pair",
+  "came from vorlaut's tests/reference/tts.lock.json, which arrived at the same",
+  "idea independently and had gone further. Its first three tones and these three",
+  "agreed to 0.03 dB before either knew about the other.",
+  "",
+  "Do not re-derive any of this from the code under test - that is the circle it",
+  "exists to break. conformance/calibrate.sh regenerates the tones from ffmpeg."
+ ],
+ "measured_with": "ffmpeg ebur128, integrated loudness, on WAV written by encodeWav",
+ "rate": 48000,
+ "seconds": 5,
+ "tolerance_db": 0.1,
+ "tones": [
+  {
+   "hz": 1000,
+   "amplitude": 0.1,
+   "lufs": -23.0,
+   "seconds": 5
+  },
+  {
+   "hz": 1000,
+   "amplitude": 0.5,
+   "lufs": -9.0,
+   "seconds": 5
+  },
+  {
+   "hz": 440,
+   "amplitude": 0.2,
+   "lufs": -17.7,
+   "seconds": 5
+  },
+  {
+   "hz": 60,
+   "amplitude": 0.5,
+   "lufs": -12.632,
+   "seconds": 3,
+   "why": "down the high-pass skirt, the stage the 1 kHz tones do not touch"
+  },
+  {
+   "hz": 10000,
+   "amplitude": 0.2,
+   "lufs": -13.64,
+   "seconds": 3,
+   "why": "up on the head shelf; a chain without it reads this one low"
+  }
+ ],
+ "true_peak": {
   "note": [
-    "The only outside opinion this family has left.",
-    "",
-    "Every other check on the loudness chain measures its output with the same",
-    "function that decided the gain, which is circular: a wrong BS.1770 would",
-    "satisfy all of them. These three were produced by ffmpeg's ebur128 reading",
-    "WAV files the module itself wrote, on the last day mitreden still had a",
-    "Python half with real ffmpeg in it. Neither consumer has one now.",
-    "",
-    "440 Hz is here on purpose. K-weighting is deliberately not flat there, so a",
-    "tone off 1 kHz catches a filter that is merely plausible.",
-    "",
-    "If these drift the fault is in level.ts, not in the numbers. Do not",
-    "re-derive them from the code under test — that is the circle they exist to",
-    "break. conformance/calibrate.sh regenerates them from ffmpeg on any machine",
-    "that has one."
+   "4000 Hz at 16 kHz, phase pi/4, so the samples deliberately miss the peaks.",
+   "A sine's true peak is exactly its amplitude, so the analytic value is not an",
+   "estimate - it is the answer, and it is what a correct chain must approach."
   ],
-  "measured_with": "ffmpeg ebur128, integrated loudness, on WAV written by encodeWav",
-  "rate": 48000,
-  "seconds": 5,
-  "tolerance_db": 0.1,
-  "tones": [
-    { "hz": 1000, "amplitude": 0.1, "lufs": -23.0 },
-    { "hz": 1000, "amplitude": 0.5, "lufs": -9.0 },
-    { "hz": 440, "amplitude": 0.2, "lufs": -17.7 }
+  "hz": 4000,
+  "rate": 16000,
+  "phase": "pi/4",
+  "seconds": 3,
+  "tolerance_db": 0.15,
+  "cases": [
+   {
+    "amplitude": 0.5,
+    "analytic_dbtp": -6.02,
+    "ours_dbtp": -5.926,
+    "ffmpeg_dbtp": -5.417,
+    "sample_peak_dbfs": -9.03
+   },
+   {
+    "amplitude": 0.25,
+    "analytic_dbtp": -12.04,
+    "ours_dbtp": -11.947,
+    "ffmpeg_dbtp": -11.437,
+    "sample_peak_dbfs": -15.05
+   }
   ]
+ },
+ "disagreements": [
+  {
+   "what": "true peak on a pure sine",
+   "ffmpeg": "reads about 0.55 dB HIGH",
+   "why": [
+    "A sine's true peak is exactly its amplitude. ffmpeg's four-times",
+    "interpolator overshoots it; ours lands within 0.1 dB of the analytic",
+    "value. On these two cases ffmpeg says -5.417 and -11.437 where the",
+    "truth is -6.02 and -12.04.",
+    "",
+    "Written down because ffmpeg is the oracle everywhere else here, and",
+    "the next person to notice this gap will be tempted to close it. Making",
+    "the chain agree with ffmpeg would make it wrong, and would cost real",
+    "headroom on every recording - a ceiling read 0.55 dB high is a gain",
+    "pulled back 0.55 dB further than it needed to be."
+   ],
+   "verdict": "ours is right; do not chase agreement"
+  }
+ ],
+ "resampling": {
+  "note": [
+   "22050 to 16000, which is what a piper medium model needs for a device",
+   "that wants 16 kHz. The second case is the one that matters: 10 kHz is",
+   "above the 8 kHz Nyquist of the output, so it must vanish rather than",
+   "fold down to 6050 Hz and arrive as noise on the consonants."
+  ],
+  "from": 22050,
+  "to": 16000,
+  "cases": [
+   {
+    "hz": 1000,
+    "amplitude": 0.2,
+    "must": "survive",
+    "before_lufs": -16.98,
+    "after_lufs": -16.98,
+    "tolerance_db": 0.2
+   },
+   {
+    "hz": 10000,
+    "amplitude": 0.2,
+    "must": "vanish",
+    "before_lufs": -13.67,
+    "after_below_lufs": -55,
+    "note": [
+     "A threshold rather than a value. vorlaut's ffmpeg-measured pair",
+     "reads -62.54 here and ours gates to -Infinity, because ours is",
+     "measured after upsampling back to 48 kHz as the contract requires",
+     "and there is nothing left to measure. Both are 'gone'; only the",
+     "arithmetic of how gone differs, and pinning an exact number would",
+     "be pinning that accident."
+    ]
+   }
+  ]
+ }
 }
