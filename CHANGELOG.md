@@ -13,6 +13,32 @@ is without anybody having to remember.
 
 ---
 
+## 2.1.1
+
+**Evidence, not code.** Nothing changed in the chain, the catalogue's answers or
+the API. `PIPELINE_VERSION` is still 1 and nothing re-renders — this is here so
+the version a consumer pins moves when the file it reads does.
+
+- **The browser chain was cleared.** "Worse than the Python app" was the right
+  observation about the wrong thing: a real recording measures **−16.0 LUFS** by
+  ffmpeg's ebur128 against a target of −16, and MP3 costs 0.2 LUFS taken
+  uniformly off every band. The container defaulted to Kerstin and the browser
+  offers Thorsten, and Kerstin — `low`, 16 kHz, nothing above 8 kHz — is the
+  worse of the two. Her `voices.json` note now says so.
+- **The frozen calibration references were re-run**, for the first time since
+  they were frozen: ffmpeg 9.0.1, all five tones still agreeing to the tenth of a
+  decibel ffmpeg prints. Recorded in `conformance/calibration.json` under
+  `verified`, because CI has no ffmpeg and is not getting one.
+- **CONTRACT.md notes the open one.** The ceiling clamps Kerstin 2.4 dB below
+  where it puts Thorsten, so two voices in one app do not match. That is §1
+  working as written, and it is the failure levelling exists to prevent.
+
+### What to edit
+
+Nothing.
+
+---
+
 ## 2.1.0
 
 ### The operating system's voices, as a third source
