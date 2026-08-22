@@ -13,9 +13,10 @@
  */
 import { shippable, type Offering } from './catalogue.js';
 import { azureVoices, type AzureOptions } from './speak.js';
+import { loadSystemVoices } from './system.js';
 
 /** What actually renders a voice. It decides what the other fields can promise. */
-export type VoiceSource = 'piper' | 'azure';
+export type VoiceSource = 'piper' | 'azure' | 'system';
 
 /** One voice, as a picker needs it. */
 export interface Offered {
@@ -36,6 +37,16 @@ export interface Offered {
   readonly downloadBytes: number;
   /** True when the voice needs a key, and therefore a network call per sentence. */
   readonly needsKey: boolean;
+  /**
+   * Whether `speak()` can hand back a levelled WAV for this voice.
+   *
+   * False for a system voice, and it is the fact a product most needs: those go
+   * through `say()`, are not levelled to the contract, and cannot be cached,
+   * exported, or written to a talker's flash. A picker that offers them beside
+   * the others has to say so, because the difference is invisible until somebody
+   * tries to save one.
+   */
+  readonly makesFile: boolean;
   /** The notice owed wherever this voice's audio is used, when one is owed. */
   readonly attribution?: string;
   /**
@@ -55,6 +66,11 @@ export interface ListOptions extends Offering {
   recommended?: boolean;
   /** Include Azure's voices, which needs a key and a request. Omitted, none are. */
   azure?: AzureOptions;
+  /**
+   * Include the operating system's own voices. Off by default: they speak but
+   * make no file, so a product opts in once it can say that to a user.
+   */
+  system?: boolean;
 }
 
 /** `de_DE`, `de-DE` and `de` all compare equal at the language. */
@@ -78,6 +94,7 @@ export function piperVoices(offering: Offering = {}): readonly Offered[] {
     source: 'piper' as const,
     downloadBytes: v.bytes,
     needsKey: false,
+    makesFile: true,
     recommended: v.recommended === true,
     ...(v.licence.attribution ? { attribution: v.licence.attribution } : {}),
   }));
@@ -91,8 +108,16 @@ export function piperVoices(offering: Offering = {}): readonly Offered[] {
  * rather than quietly returning the piper voices alone: a picker silently short
  * of half its voices is the same failure as a licence silently wrong, and the
  * person who typed the key is the only one who can fix it.
+ *
+ * System voices appear only when asked for, and never match a `gender` filter —
+ * the Web Speech API does not publish one, and inferring it from a name is how
+ * somebody gets told their voice is a woman because it is called Anna.
  */
 export async function listVoices(o: ListOptions = {}): Promise<readonly Offered[]> {
-  const all = [...piperVoices(o), ...(o.azure ? await azureVoices(o.azure) : [])];
+  const all = [
+    ...piperVoices(o),
+    ...(o.azure ? await azureVoices(o.azure) : []),
+    ...(o.system ? await loadSystemVoices() : []),
+  ];
   return all.filter(v => matches(v, o));
 }

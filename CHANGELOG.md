@@ -13,6 +13,41 @@ is without anybody having to remember.
 
 ---
 
+## 2.1.0
+
+### The operating system's voices, as a third source
+
+`listVoices({ system: true })` adds whatever voices the OS already has. They cost
+nothing, need no key, and work with no network — and every OS has a German female
+one, which after piper turned out to publish exactly one licence-clear German
+female voice and MLS turned out not to speak German is the point of them.
+
+**They make no file.** The Web Speech API returns no samples, so nothing can be
+trimmed, levelled, cached under a fingerprint, or written to a talker's flash.
+They go through the new `say()` rather than `speak()` — a different verb because
+it is a different act — and `speak()` refuses a `system:` id with a pointer to it.
+
+`Offered` gains **`makesFile`**, which is the fact a picker most needs: the
+difference between a voice that saves and one that does not is invisible until
+somebody tries to save one.
+
+Two consequences to state to a user rather than imply: a system voice is **not
+levelled**, so it will not match the piper voices beside it; and it has **no
+gender**, because the API publishes a name and a language and nothing else, so a
+gender filter excludes them. Guessing from the name is how somebody is told their
+voice is a woman because it is called Anna.
+
+### Also
+
+- The `speak()` example in the README no longer passes `rate: 16000`. On a
+  22.05 kHz model that discards everything above 8 kHz — measured 38 dB down in
+  the 8–11 kHz band. `postprocess` always defaulted to 44100; only the example
+  disagreed.
+- `de_DE-mls-medium` is recorded as **not** a route to a German female voice. All
+  236 speakers were rendered and none sounds like German.
+
+---
+
 ## 2.0.2
 
 **The committed browser build had quietly become three files, and only two of

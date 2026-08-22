@@ -26,6 +26,9 @@ export {
   type ListOptions, type Offered, type VoiceSource,
 } from './list.js';
 export { DEFAULT_BITRATE, encodeMp3 } from './mp3.js';
+export {
+  hasSystemVoices, loadSystemVoices, say, systemVoices, type SayOptions,
+} from './system.js';
 export { remapPhonemeIds, type PhonemeIdMap, type Remapped } from './phonemes.js';
 export {
   downloadedModels, forgetModels, hasPiperRuntime, phonemise, synthesize, usePiperRuntime,

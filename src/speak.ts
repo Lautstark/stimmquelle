@@ -193,6 +193,7 @@ export async function azureVoices(o: AzureOptions): Promise<readonly Offered[]> 
       // network for every sentence instead of once for the model.
       downloadBytes: 0,
       needsKey: true,
+      makesFile: true,
       // Azure publishes hundreds and this package has no opinion on which to
       // put in front of somebody. The catalogue's picks are about the four
       // voices it can actually vouch for.
@@ -248,6 +249,13 @@ export async function speak(text: string, vid: string, options: SpeakOptions = {
   // already reserves `elevenlabs`, and an `elevenlabs:` id — like a typo'd
   // `pipe:` — reached vits-web with no licence asked at all. An unknown backend
   // is refused rather than assumed, because assuming is what fetched the model.
+  if (backend === 'system') {
+    throw new Error(
+      `${vid} is one of the operating system's own voices, which return no audio. `
+      + 'Use say() — it speaks and hands back nothing, because that is all the Web '
+      + 'Speech API does. Nothing is levelled and nothing can be saved.',
+    );
+  }
   if (backend !== 'piper' && backend !== 'azure') {
     throw new Error(`${backend}: is not a backend this package speaks. Use piper: or azure:.`);
   }

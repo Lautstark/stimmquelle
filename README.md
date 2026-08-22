@@ -320,8 +320,33 @@ nothing has to be translated. The licence gate is not re-applied here because
 `shippable` already applied it: a voice in this list is a voice `speak()` will
 accept, and a test asserts the two cannot disagree.
 
-There is no `age` filter. piper does not publish one and neither does the Web
-Speech API, so it would be a field with nothing behind it.
+`listVoices({ system: true })` adds the **operating system's own voices**. They
+cost nothing, need no key, work offline, and every OS has a German female one —
+which, after piper turned out to publish exactly one licence-clear German female
+voice, is not nothing.
+
+**They make no file, and that is the whole shape of them.** The Web Speech API
+returns no samples, so nothing can be trimmed, levelled, cached under a
+fingerprint, or written to a talker's flash. They go through `say()` rather than
+`speak()`:
+
+```ts
+import { say, listVoices } from '@lautstark/stimmquelle';
+
+const [voice] = await listVoices({ lang: 'de', system: true });
+await say('Ich möchte noch nicht ins Bett.', voice.id);   // speaks, returns nothing
+```
+
+`makesFile` on every entry is how a picker tells them apart, and `speak()` refuses
+a `system:` id rather than inventing a `Spoken` with no audio in it. Two things a
+product has to say out loud rather than imply: a system voice is **not levelled**,
+so it will not match the piper voices beside it, and it has **no gender**, so a
+gender filter excludes it — the API publishes a name and a language and nothing
+else, and guessing from the name is how somebody gets told their voice is a woman
+because it is called Anna.
+
+There is no `age` filter either. piper does not publish one and neither does the
+Web Speech API, so it would be a field with nothing behind it.
 
 `piperVoices()` is the same thing without the network, for a page with no key.
 The lower-level catalogue — `shippable`, `byId`, `displayName` — is unchanged.
@@ -439,9 +464,10 @@ const notices = attributionsFor(usedVoiceIds);
 not in the catalogue, because a machine that cannot render a WAV still has to
 know what the file would have been called.
 
-**Choosing.** `listVoices`, `piperVoices`, `azureVoices`.
+**Choosing.** `listVoices`, `piperVoices`, `azureVoices`, `systemVoices`,
+`loadSystemVoices`, `hasSystemVoices`.
 
-**Speaking.** `speak`, `asBlob`, `usePiper`, `downloaded`, `forget`, and for the
+**Speaking.** `speak`, `say`, `asBlob`, `usePiper`, `downloaded`, `forget`, and for the
 direct path `usePiperRuntime`, `synthesize`, `phonemise`, `remapPhonemeIds`,
 `hasPiperRuntime`, `downloadedModels`, `forgetModels`. Azure's own helpers —
 `buildSsml`, `azureVoices`, `localeOf`, `AZURE_FORMAT`, `AZURE_RATE`.
@@ -459,7 +485,7 @@ build with no bare imports and the catalogue inlined, loadable from a relative
 path or from behind an import map:
 
 ```
-dist/browser/index.js      the module, 45 kB
+dist/browser/index.js      the module, 49 kB
 dist/browser/lamejs.js     254 kB, fetched only if something asks for an MP3
 ```
 
@@ -504,7 +530,7 @@ a consumer writes rather than by a relative path. It runs after the build
 because it reads `dist/`, and it exists because a package cannot see its own
 entry points from the inside: all of 2.0.0's were wrong and nothing noticed.
 
-108 tests. They are the rules made executable rather than a description of the
+121 tests. They are the rules made executable rather than a description of the
 module. Documentation is the weakest form of enforcement: all three of the prose
 statements of the licensing rule were correct on the day a CC BY-NC-SA voice
 reached a browser build, and the rule was correct in this README on the day
