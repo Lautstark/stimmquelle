@@ -14,7 +14,11 @@
     // resolves to the one audited copy at the root rather than to a second copy
     // beside it.
     "rootDir": "src",
-    "types": []
+    // `vite.ts` is a build-time plugin and imports node:fs — the one part of
+    // this package that runs on a build machine rather than in a tab. Nothing
+    // else may: the chain stays free of node so the same code runs in a browser
+    // and under a test that checks it against ffmpeg.
+    "types": ["node"]
   },
   "include": ["src"]
 }

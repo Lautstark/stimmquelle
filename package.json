@@ -1,6 +1,6 @@
 {
   "name": "@lautstark/stimmquelle",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "type": "module",
   "description": "Piper voices for German AAC tools: which may be shipped, which speak in a browser, and the loudness contract both halves of a talker agree on.",
   "license": "MIT",
@@ -27,6 +27,14 @@
     "./browser": {
       "types": "./dist/index.d.ts",
       "default": "./dist/browser/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "default": "./dist/runtime.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "default": "./dist/vite.js"
     }
   },
   "files": [
@@ -57,5 +65,17 @@
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7"
+  },
+  "peerDependencies": {
+    "@diffusionstudio/piper-wasm": "^1.0.0",
+    "onnxruntime-web": "1.18.0"
+  },
+  "peerDependenciesMeta": {
+    "@diffusionstudio/piper-wasm": {
+      "optional": true
+    },
+    "onnxruntime-web": {
+      "optional": true
+    }
   }
 }

@@ -41,6 +41,19 @@ for (const specifier of ['@lautstark/stimmquelle', '@lautstark/stimmquelle/brows
   }
 }
 
+// The two subpaths a consumer's build imports rather than its page. They carry
+// no VERSION to compare — what is being asked is only whether they resolve and
+// load, which is the half `existsSync` cannot answer, and the half that was
+// wrong for the whole of 2.0.0.
+for (const specifier of ['@lautstark/stimmquelle/runtime', '@lautstark/stimmquelle/vite']) {
+  const mod = await import(specifier);
+  const wanted = specifier.endsWith('/vite') ? 'piperVendor' : 'piperRuntime';
+  if (typeof mod[wanted] !== 'function') {
+    console.error(`${specifier} does not export ${wanted}()`);
+    process.exit(1);
+  }
+}
+
 // The browser build is dropped into a page by hand, file by file, by consumers
 // with no bundler and no package manager. So `index.js` has to be the whole
 // module: esbuild's --splitting will hoist shared code into a sibling chunk the

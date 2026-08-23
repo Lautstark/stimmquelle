@@ -13,6 +13,77 @@ is without anybody having to remember.
 
 ---
 
+## 2.3.0
+
+### The consumer half of `usePiperRuntime`, so it stops being written twice
+
+Configuring the runtime needs three answers, and two of them have had the same
+answer in every product that ever gave them. `piperRuntime()` fills those two
+in; `piperVendor()` puts the files they point at onto the page.
+
+```ts
+// vite.config.ts
+import { piperVendor } from '@lautstark/stimmquelle/vite';
+export default defineConfig({ plugins: [piperVendor()] });
+
+// wherever speech is set up
+import { usePiperRuntime } from '@lautstark/stimmquelle/browser';
+import { piperRuntime } from '@lautstark/stimmquelle/runtime';
+usePiperRuntime(piperRuntime({ onnx: () => import('onnxruntime-web/wasm') }));
+```
+
+`onnx` stays required, because the two products that drive piper disagree about
+it for reasons that are about them: mitreden bundles it to keep a promise that
+its build reaches no host, vorlaut imports a pinned CDN URL to keep the engine's
+weight off a bundle. Both are right, and neither is this package's decision.
+
+The claims are still the consumer's too. `ownsInference` and
+`rendersAttribution` are statements about a product — what it drives and what it
+renders — and a default here would hand out a conditional permission on behalf
+of somebody who never made the promise. That is the one thing this release
+deliberately does *not* absorb.
+
+**Two peer dependencies**, both optional: `@diffusionstudio/piper-wasm` and
+`onnxruntime-web` pinned at `1.18.0`. A consumer that only uses Azure, the
+system voices or the levelling chain installs neither and notices nothing. The
+pin is exact because the binaries `piperVendor()` copies have to be the ones the
+module a page loads expects.
+
+### What it carries that the copies did not
+
+**The copy is checked against what arrived, not only against what was read.** A
+consumer's `dist/` was found holding 1,073,152 bytes of the 18,077,249-byte
+espeak archive — the right name, the right leading bytes, then nothing — after a
+build that reported success. Nothing downstream reports it: the wasm still
+instantiates and the phonemizer fails later, on a language whose data was in the
+part that never arrived, which reads as a broken voice rather than a broken
+build. A consumer's own end-to-end tests cannot see it either, because standing
+in for the phonemizer is exactly how they avoid waiting on 30 MB of wasm.
+
+**Files are found by walking `node_modules`, not by `require.resolve`.**
+`onnxruntime-web` publishes an `exports` map with no entry for `./dist/*`, so
+resolving `onnxruntime-web/dist/ort-wasm.wasm` throws on a file that is sitting
+right there.
+
+**One thread by default.** onnxruntime sizes its pool off `hardwareConcurrency`
+and then warns that threads want a cross-origin-isolated page, which most static
+hosts are not. It always fell back by itself, so nothing behaves differently —
+what changes is that the fallback is the arrangement rather than a recovery, and
+that a first recording stops writing a warning nobody can act on into a console.
+It also matches the binaries copied by default, which are the single-threaded
+pair; `threaded: true` copies the others for a page that really does send COOP
+and COEP.
+
+### What to edit
+
+Nothing. Both entry points are new, `speak()` and the catalogue are untouched,
+`PIPELINE_VERSION` is still 2 and nothing re-renders. A consumer that already
+wired `usePiperRuntime` by hand keeps working and may collapse onto these two at
+its leisure — the hand-written version and this one produce the same
+description.
+
+---
+
 ## 2.2.0
 
 ### Every recording re-renders. This is the one that changes how things sound.

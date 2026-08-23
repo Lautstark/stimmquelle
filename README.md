@@ -214,9 +214,32 @@ symbol ids to a model that was trained against its own, older table. Every `low`
 and `x_low` voice dies of it, and in German that is every female voice piper
 publishes.
 
-```ts
-import { usePiperRuntime, speak } from '@lautstark/stimmquelle';
+Two of the three answers are the same in every product that has ever given
+them, so since 2.3.0 the package fills them in — one plugin to put the files on
+the page, one call to point at them:
 
+```ts
+// vite.config.ts
+import { piperVendor } from '@lautstark/stimmquelle/vite';
+export default defineConfig({ plugins: [piperVendor()] });
+
+// wherever speech is set up
+import { usePiperRuntime, speak } from '@lautstark/stimmquelle';
+import { piperRuntime } from '@lautstark/stimmquelle/runtime';
+
+usePiperRuntime(piperRuntime({ onnx: () => import('onnxruntime-web/wasm') }));
+```
+
+`onnx` stays yours: mitreden bundles it to keep its build free of every host,
+vorlaut imports a pinned CDN URL to keep the engine off a bundle it pays for at
+first use. So do the claims — `ownsInference` and `rendersAttribution` say what
+a *product* drives and renders, and this package will not answer that on
+anybody's behalf.
+
+The long form still works, and is what to write when the files are served some
+other way:
+
+```ts
 usePiperRuntime({
   phonemizer: () => import('./vendor/piper_phonemize.js'),
   onnx: () => import('./vendor/ort.wasm.js'),
