@@ -181,3 +181,22 @@ describe('the recommended four', () => {
     expect(azure.every(v => !v.recommended)).toBe(true);
   });
 });
+
+describe('rushesFragments', () => {
+  it('reaches a picker on the one voice that has it, and no other', () => {
+    const offered = piperVoices({ ownsInference: true });
+    const carrying = offered.filter(v => v.rushesFragments).map(v => v.id);
+    expect(carrying).toEqual(['piper:de_DE-kerstin-low']);
+    // Absent rather than false everywhere else, so a picker can test the field
+    // without a list of voices of its own.
+    const thorsten = offered.find(v => v.id === 'piper:de_DE-thorsten-medium');
+    expect(thorsten?.rushesFragments).toBeUndefined();
+  });
+
+  it('carries its evidence, the way recommended does', () => {
+    const kerstin = VOICES.find(v => v.id === 'de_DE-kerstin-low');
+    expect(kerstin?.rushesFragments).toBe(true);
+    // A bare flag is a claim nobody can check; the measurements travel with it.
+    expect(kerstin?.rushesFragments_why).toMatch(/0\.2|58%|terminal punctuation/i);
+  });
+});

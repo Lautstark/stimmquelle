@@ -65,6 +65,21 @@ export interface Offered {
   /** The notice owed wherever this voice's audio is used, when one is owed. */
   readonly attribution?: string;
   /**
+   * True when this voice crams an unterminated word into a near-fixed span, so
+   * single words arrive as mush while sentences are fine.
+   *
+   * Wordless on purpose: a picker that shows it says so in its own language and
+   * its own tone, and the fix it suggests — ending the word with `!` or `.` —
+   * is a sentence about a product's own text field, not about this package.
+   * `de_DE-kerstin-low` is the only voice carrying it, and the catalogue's
+   * `rushesFragments_why` holds the measurements behind it.
+   *
+   * It matters most where it is least visible: a talker's keys are mostly
+   * single words, which is exactly the case that breaks.
+   */
+  readonly rushesFragments?: boolean;
+
+  /**
    * The pick for this language-and-gender slot. A picker can show these four
    * and put the rest behind "more voices". Always false for a cloud backend,
    * which publishes hundreds and about which this package has no opinion.
@@ -114,6 +129,7 @@ export function piperVoices(offering: Offering = {}): readonly Offered[] {
     offline: true,
     recommended: v.recommended === true,
     ...(v.licence.attribution ? { attribution: v.licence.attribution } : {}),
+    ...(v.rushesFragments ? { rushesFragments: true as const } : {}),
   }));
 }
 

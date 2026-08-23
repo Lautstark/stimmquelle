@@ -204,6 +204,8 @@ var voices_default = {
       proof: "container",
       note: "Free to ship and fine in a container - she is mitreden's container default and is in vorlaut's. Published as low only, so no other file helps. Reading each model's own phoneme_id_map instead of vits-web's fixed table is what would bring her back, and it means owning the phonemizer glue rather than calling a library. Note the 16 kHz: vorlaut's device wants exactly that, so a low voice would need no resampling at all. The cause is now diagnosed and fixed in code: the phonemizer writes the ich-Laut decomposed and this model's map has only the precomposed form, so remapPhonemeIds composes it and every id lands in range. `browser` stays `quality` until somebody has actually heard it \u2014 the proof field exists so this list cannot say tested and mean assumed. The harness has reported: she speaks, 63 ids, nothing dropped, the ich-Laut at 40 where native piper leaves a bare plosive at 16. Native piper drops the combining mark her map lacks, so it says Ik, m\xF6kte, nikt - which means native is not the oracle here and cannot flip this either way. What is left is a human ear. Heard 2026-08-22: the ich-Laut is right and she is intelligible throughout, so the remap does what it claimed. The verdict on the voice itself was okay but not great, which is a judgement about a 2021 low-tier model and not about the fix. `browser` stays `quality` for ever - that column is what vits-web can do, and it still cannot phonemise her. Compared against de_DE-thorsten-medium through the identical chain on 2026-08-22 and judged the worse of the two, which settles a question that had been put the other way round: a browser recording sounding worse than a container one was the container defaulting to her, not the browser chain damaging anything.",
       browser_with_own_ids: "ok, heard 2026-08-22 - intelligible and correct, unremarkable",
+      rushesFragments: true,
+      rushesFragments_why: "A word with no terminal punctuation comes out at a near-fixed ~0.2 s whatever the word is, so Nein and Fertig get the same slot as Ja and arrive as mush. Terminal punctuation releases her and the duration tracks the word again. Measured 2026-08-23 over ten typical talker words: +58% on average, +123% at worst (Nein 0.208 s -> 0.464 s, Fertig 0.272 s -> 0.560 s, Danke 0.240 s -> 0.496 s). Not phonemisation - exact is true either way and nothing is dropped; the ids only grow by the punctuation token. It is the duration predictor of a 2021 low-tier model. de_DE-thorsten-medium is +2% and en_US-john-medium is -1% over the same words, so this is hers rather than the tier's - though the other low and x_low voices cannot be checked, being ship: false on an unclear licence. It matters because a talker's keys are mostly single words, which is exactly the case that breaks. Recorded rather than fixed in the chain: appending a terminator would change what a text renders to without changing its name, which is a PIPELINE_VERSION bump and a re-render of every recording in both products.",
       recommended: true,
       recommended_why: "German female, and the only licence-clear one piper publishes - Eva K and Ramona both have cards naming no licence. Needs usePiperRuntime, and needs somebody to have heard her. Heard on 2026-08-22 and judged okay but not great: she is the pick because she is the only licence-clear German female voice piper publishes, not because she beat anything. Held the slot against all 236 mls speakers auditioned on 2026-08-22, none of which sounded like German. She is the pick on the evidence now, not for want of looking."
     },
@@ -445,7 +447,7 @@ var TRIM = Object.freeze({
   keepTailSec: 0.05
 });
 var MEASURE_RATE = 48e3;
-var VERSION = "2.4.0";
+var VERSION = "2.5.0";
 var PIPELINE_VERSION = 2;
 
 // src/level.ts
@@ -1205,7 +1207,8 @@ function piperVoices(offering = {}) {
     // Once. `downloadBytes` is the price, and after it nothing reaches a host.
     offline: true,
     recommended: v.recommended === true,
-    ...v.licence.attribution ? { attribution: v.licence.attribution } : {}
+    ...v.licence.attribution ? { attribution: v.licence.attribution } : {},
+    ...v.rushesFragments ? { rushesFragments: true } : {}
   }));
 }
 async function listVoices(o = {}) {

@@ -85,6 +85,24 @@ export interface Voice {
    */
   readonly recommended?: boolean;
   readonly recommended_why?: string;
+  /**
+   * This model crams a word carrying no terminal punctuation into a near-fixed
+   * span, whatever the word is, so single words arrive as mush while sentences
+   * are fine.
+   *
+   * A fact about a *model*, kept here rather than in a product, because both
+   * products would otherwise hardcode prose about a voice and drift apart — and
+   * because if a second voice turns out to do it, one field changes instead of
+   * two interfaces. `rushesFragments_why` carries the measurements, for the same
+   * reason `recommended_why` exists: a bare flag is a claim nobody can check.
+   *
+   * Deliberately not fixed in the chain. Appending a terminator would change
+   * what a given text renders to without changing the name it renders under,
+   * which is a `PIPELINE_VERSION` bump and a re-render of every recording both
+   * products hold. Saying it costs nothing and re-renders nothing.
+   */
+  readonly rushesFragments?: boolean;
+  readonly rushesFragments_why?: string;
   readonly note?: string;
 }
 

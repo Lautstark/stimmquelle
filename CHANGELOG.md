@@ -13,6 +13,45 @@ is without anybody having to remember.
 
 ---
 
+## 2.5.0
+
+### The catalogue says which voices rush a single word
+
+`de_DE-kerstin-low` renders a word carrying **no terminal punctuation** at a
+near-fixed ~0.2 s, whatever the word is. `Nein` and `Fertig` get the same slot
+as `Ja` and arrive as mush; `Nein!` is 0.464 s and fine. Measured over ten
+typical talker words: **+58% duration on average, +123% at worst.**
+
+Found by a user of both products on the case an AAC talker is actually made of —
+single words on single keys — which is why it had gone unnoticed: every test
+sentence in this repository is a sentence.
+
+`Offered.rushesFragments` says so, beside `attribution` and for the same kind of
+reason: it is a fact about a *model*, so both products can warn without either
+hardcoding prose about a voice, and if a second voice turns out to do it one
+field changes instead of two interfaces. Wordless, so a picker says it in its own
+language and its own tone. `voices.json` carries the measurements under
+`rushesFragments_why`.
+
+Only Kerstin carries it. `de_DE-thorsten-medium` is +2% and `en_US-john-medium`
+is −1% over the same words, so this is hers rather than her tier's — with the
+honest caveat that the other `low` and `x_low` voices cannot be checked at all,
+being `ship: false` on an unclear licence.
+
+**Deliberately not fixed in the chain.** Appending a terminator would change what
+a given text renders to without changing the name it renders under — a
+`PIPELINE_VERSION` bump and a re-render of every recording both products hold.
+That is not worth it for a trait one voice has and a picker can mention.
+`PIPELINE_VERSION` stays 2 and nothing re-renders.
+
+Detail and the measurements: issue #3.
+
+### What to edit
+
+Nothing. The field is optional and absent on every other voice.
+
+---
+
 ## 2.4.0
 
 ### `offline` on every voice, because "the OS has voices" was not the same as "they work here"
