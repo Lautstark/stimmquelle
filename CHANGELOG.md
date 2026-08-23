@@ -13,6 +13,48 @@ is without anybody having to remember.
 
 ---
 
+## 2.5.1
+
+**`piperRuntime()`'s `base` default answered `/` in every build.** A consumer
+deployed under a subpath — a GitHub Pages project site, which is what
+`piperVendor()` and the `threads: 1` default are both shaped around — fetched all
+four runtime files from the wrong directory and failed at the first sentence.
+
+Vite substitutes `import.meta.env.BASE_URL` **textually**, and only where the
+expression appears whole. `viteBase()` bound `import.meta` to a local first —
+defensively, because this module is also loaded under plain node by
+`check:exports`, where `import.meta.env` does not exist. That defence put the
+expression out of vite's reach, so it survived into consumers' bundles as a real
+property lookup on an object that is undefined in a browser module, and the
+`?? '/'` fallback won every time.
+
+Written out in full now, with the cast on the expression rather than on a
+binding, so TypeScript is satisfied without vite types and the emitted text still
+reads `import.meta.env?.BASE_URL`. The optional chain is what keeps node
+answering rather than throwing.
+
+Reported in #2, with a reproduction narrowing it to the alias. Confirmed here end
+to end through a real consumer build rather than only in a minimal project, since
+the open question was whether vite substitutes inside a *dependency* at all: it
+does — built against `BASE_PATH=/vorlaut/`, the helper folds to
+`function ss(){return"/vorlaut/"}` in the consumer's bundle.
+
+Two tests now read the **built** `dist/runtime.js` for that literal, and for the
+absence of a local binding. Calling the function proves nothing — under node
+`import.meta.env` is undefined either way, so the broken version and the fixed
+one both answer `/` in a test. The defect only ever existed in somebody else's
+bundle, which is why it typechecked, built, and passed everything that did not
+deploy.
+
+### What to edit
+
+Nothing, and nothing was ever unsafe. Both consumers pass `base` explicitly
+today — vorlaut since `9dd407f`, mitreden from the start — so both were already
+correct and stay correct. That workaround is now optional again rather than
+load-bearing.
+
+---
+
 ## 2.5.0
 
 ### The catalogue says which voices rush a single word

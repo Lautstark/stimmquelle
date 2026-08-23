@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { piperRuntime } from '../src/runtime.js';
 import type { OnnxModule } from '../src/synthesize.js';
 
@@ -49,5 +50,40 @@ describe('piperRuntime', () => {
     expect(piperRuntime({ onnx, base: '/' }).fetchModel).toBeUndefined();
     const fetchModel = async () => new ArrayBuffer(0);
     expect(piperRuntime({ onnx, base: '/', fetchModel }).fetchModel).toBe(fetchModel);
+  });
+});
+
+describe('the base default, as it reaches a bundler', () => {
+  /**
+   * The one test that would have caught #2, and it has to read the *built* file
+   * rather than call the function.
+   *
+   * Calling it proves nothing: under node `import.meta.env` is undefined either
+   * way, so the broken version and the fixed one both answer `/` here. The
+   * defect only existed in somebody else's bundle. Vite replaces
+   * `import.meta.env.BASE_URL` textually and only where it is written out whole,
+   * so binding `import.meta` to a local first — which the first version did, to
+   * keep node happy — put it out of reach and every consumer build resolved the
+   * base to `/` whatever it was set to.
+   *
+   * So this asserts the shape of the emitted text. Run `npm run build` first;
+   * `npm test` in CI runs after it.
+   */
+  const built = readFileSync(new URL('../dist/runtime.js', import.meta.url), 'utf8');
+
+  it('emits import.meta.env.BASE_URL written out in full', () => {
+    expect(built).toMatch(/return import\.meta\.env\?\.BASE_URL \?\? '\/'/);
+  });
+
+  it('never binds import.meta to a local on the way', () => {
+    // The exact regression: `const meta = import.meta` anywhere in this module
+    // means the substitution is gone again.
+    expect(built).not.toMatch(/=\s*import\.meta\s*;/);
+  });
+
+  it('still answers under node, where import.meta.env does not exist', () => {
+    // The reason the alias was there in the first place. `?.` has to carry it.
+    expect(() => piperRuntime({ onnx })).not.toThrow();
+    expect(piperRuntime({ onnx }).wasmBase).toBe('/vendor/');
   });
 });

@@ -102,11 +102,27 @@ export function piperRuntime(options: PiperRuntimeOptions): PiperRuntime {
 /**
  * Vite's base path when there is one.
  *
- * Read defensively rather than typed: this module is compiled by this package,
- * which has no vite types and no business having them, and it is also loaded
- * under node by `check:exports`, where `import.meta.env` does not exist at all.
+ * **`import.meta.env.BASE_URL` has to survive into the emitted JavaScript
+ * written out in full, or this silently answers `/` for ever.** Vite replaces
+ * that expression *textually*, and only where it appears whole. This function
+ * used to bind `import.meta` to a local first — defensively, because the module
+ * is also loaded under plain node by `check:exports`, where `import.meta.env`
+ * does not exist. That defence put the expression out of vite's reach: it
+ * survived into consumers' bundles as a real property lookup, `env` was
+ * undefined in a browser module, and every build resolved the base to `/`
+ * whatever it was set to. Silent, and only visible on a site served from a
+ * subpath — where all four runtime files were then fetched from the wrong
+ * directory and the first sentence 404'd inside somebody else's glue.
+ *
+ * The cast is on the expression rather than on a binding, so TypeScript is
+ * satisfied without vite types and the emitted text still reads
+ * `import.meta.env?.BASE_URL`. The optional chain is what keeps node happy —
+ * `import.meta.env` is undefined there, and `?.` answers rather than throws.
+ *
+ * `test/runtime.test.ts` reads the built file for that literal, because this is
+ * a defect whose whole character is that it typechecks, builds, and passes
+ * every test that does not deploy.
  */
 function viteBase(): string {
-  const meta = import.meta as unknown as { env?: { BASE_URL?: string } };
-  return meta.env?.BASE_URL ?? '/';
+  return (import.meta as unknown as { env?: { BASE_URL?: string } }).env?.BASE_URL ?? '/';
 }

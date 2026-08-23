@@ -44,7 +44,7 @@ export const MEASURE_RATE = 48000;
  * every other constant is: the bundle has no disk. A test ties the two together,
  * because they live in files that cannot read each other.
  */
-export const VERSION = '2.5.0';
+export const VERSION = '2.5.1';
 
 /**
  * Bumped whenever §1 or §2 of the contract changes.
