@@ -29,7 +29,7 @@ energy sits below 20 Hz, **0.1%** at or above F0, and level-matched it adds
 recording levelled without it. The 50 ms release and the running-minimum window
 smooth the envelope whatever the look-ahead does. CONTRACT.md §1.
 
-**CONTRACT.md §8 was resting on an inference that does not hold.** It said `ç`
+**CONTRACT.md §3a was resting on an inference that does not hold.** It said `ç`
 at id 40 is "the form she was trained on", reasoning from Kerstin's map holding
 it. New: `conformance/phoneme-tables.mjs`, which fetches six published configs
 and shows the same 130-entry table under `en_GB-alan-low` and
@@ -48,6 +48,35 @@ Two sentences that presupposed the answer were corrected with it: the
 disagreement with native piper is *contained* rather than *in our favour*, and
 native cannot arbitrate it in either direction, which was always true of both
 sides and only ever written about one.
+
+### The listening test reported, and it went against the fix
+
+Five German sentences carrying the ich-Laut, three renders a side so the
+duration predictor averages out, levelled through this package, labels shuffled
+per sentence. **Native piper's bare `c` at 16 was preferred five out of five** —
+the listener tracked the side across a label flip, so it is the sound and not
+the position. A separate blind ranking of every plausible symbol in Kerstin's
+table, with a deliberately wrong control that was correctly identified as worst,
+put `c` at 16 first: **there is no better symbol to compose onto either.**
+
+`remapPhonemeIds` is **unchanged**. Six preferences, one listener, one voice.
+What is implicated is only the composition step, never the table lookup that
+stops a `low` voice dying with an index out of range.
+
+### Four mechanisms eliminated, with numbers
+
+`README.md` gains a register of what *"the browser sounds worse than the
+container"* has turned out not to be — the limiter, the resampler, the levelling
+accuracy, and the 3 dB the two levellers now differ by. Each row carries its
+measurement. The observation has outlived three explanations and the
+eliminations are worth more than the guesses that followed them.
+
+The Python half was rebuilt to get them: native piper and ffmpeg 9.0.1, with one
+render levelled through both chains rather than one render per chain. **ffmpeg's
+`loudnorm` lands Kerstin at −19.1 LUFS against this package's −16.2** — it gives
+gain back at the ceiling exactly as the pre-2.2.0 rule did. Inaudible, and
+recorded in §1 anyway, because the rule it bears on was overturned on the
+grounds that nothing existed to disagree with.
 
 ### What to edit
 

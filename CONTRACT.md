@@ -89,6 +89,31 @@ made under. The frozen tones above are still what stops "consistent" drifting
 into "consistently wrong", and they were re-run against ffmpeg 9.0.1 on the day
 this changed.
 
+### The two levellers no longer land in the same place, and that is new
+
+The consistency argument above assumed a browser and a container agreeing to
+within a fraction of a decibel. Since 2.2.0 they do not, and the gap is
+one-directional and voice-dependent.
+
+One `de_DE-kerstin-low` render, levelled twice — never rendered twice, per §7:
+
+| | integrated | true peak | crest |
+| --- | --- | --- | --- |
+| ffmpeg `loudnorm=I=-16:TP=-1.5` | **−19.1 LUFS** | −1.5 dBTP | 18.4 dB |
+| this package's `postprocess` | **−16.2 LUFS** | −1.5 dBTP | 15.4 dB |
+
+**ffmpeg does not reach the target either.** It respects the same ceiling and
+gives the gain back, which is exactly the behaviour 2.2.0 removed from this
+package — so the 3.0 dB that used to separate Kerstin from Thorsten now
+separates this package from ffmpeg on Kerstin. The browser asks a speaker for
+**3.1 dB more sustained level** at 3 dB less crest.
+
+Judged **identical by ear** at natural levels on 2026-08-23, so this is not a
+defect. It is recorded because §1's original rule — no limiter, the container is
+the oracle — was overturned on the grounds that no container exists to disagree
+with. One was rebuilt, it disagrees, and anybody weighing that rule again should
+weigh it against this number rather than against the absence of one.
+
 ### Where ffmpeg and a static gain diverge, and why
 
 ffmpeg's `loudnorm` applies one gain while it can and switches to **compressing**
@@ -269,7 +294,52 @@ by `c` + U+0327, and 40 is the only symbol in her table for that sound. That is
 a real argument and a weaker one, and it is weaker in the direction that
 matters: it is a claim about what the symbol means, not about what the model
 learned. Whether a 2021 German model responds well to 40 is a question only a
-listener can answer, and one is being asked.
+listener can answer.
+
+### One has been asked, and answered against us
+
+Blind A/B, 2026-08-23. Five German sentences carrying the ich-Laut, three
+renders a side so piper's duration predictor averages out rather than being
+switched off, every file levelled through this package's own chain, labels
+shuffled per sentence so a listener cannot track a position instead of a sound.
+
+**Native piper's bare `c` at 16 was preferred in five of five.** The listener
+picked the first label in one sentence and the second in four, which is the side
+and not the label. An earlier deterministic trial on one of the same sentences
+— noise scales at zero, so the only difference in the whole render was those
+three ids — went the same way.
+
+Neither render has a measurable defect: they sit within 0.1 percentage points of
+each other for energy above 4 kHz, so this is not an artefact in id 40, it is
+that a 2021 model renders 40 less convincingly than it renders a symbol nobody
+intended. Five sentences, one listener: p = 0.06 two-sided. That is evidence,
+not proof, and it points one way.
+
+**And there is no better symbol to compose onto.** The same sentence was
+rendered with each plausible candidate in her table substituted at the three
+positions — `ç` 40, `x` 36 (the ach-Laut), `c` 16, and `ʃ` 96 as a deliberately
+wrong control — then levelled, shuffled and ranked blind. The control was
+correctly picked out as the worst, which is what makes the rest of the ranking
+worth reading: **`c` at 16 was the best of the four**, with `x` and `ç` between.
+
+So the finding is not "compose onto something else". It is that this model
+renders the symbol espeak means *less well than it renders the one native piper
+arrives at by dropping a mark it cannot express*. Note what 16 is: IPA `c`, the
+voiceless palatal **plosive** — the same place of articulation as `ç`, differing
+in manner. It is a near neighbour, not a wild substitution, which is the most
+likely reason it survives the ear at all.
+
+**What is implicated is narrow, and worth stating precisely.** `remapPhonemeIds`
+does two things. It looks each phoneme up in the model's own table — that is
+what stops a `low` voice dying with an index out of range, it is the whole
+reason `usePiperRuntime` exists, and **none of this touches it**. Separately, it
+*composes* a decomposed pair onto a precomposed symbol where the model has no
+entry for the emitted form. Only the second is in question, and only for a model
+whose table lacks the mark.
+
+`remapPhonemeIds` has not been changed on the strength of it. One listener, one
+voice. What is settled is that this section may not claim the composed form is
+correct, and that the composition is not free.
 
 **Do not restore the stronger wording.** It reads as settled and the check above
 takes seconds to run.

@@ -145,7 +145,7 @@ because her map holds it. That does not follow:
 no ich-Laut. It is one base table piper shipped with every voice of that era, so
 a symbol being in it is evidence about piper's table and not about training.
 What is left is the phonemizer's intent, which is a real argument and a weaker
-one. `CONTRACT.md` §8 carries the correction.
+one. `CONTRACT.md` §3a carries the correction.
 
 Neither can native piper arbitrate it: the two say different words in three
 places, so comparing spectra compares two recordings saying different things —
@@ -165,6 +165,38 @@ It would not save much download: `de_DE-kerstin-low` is 63.1 MB against
 `de_DE-thorsten-medium`'s 63.2 MB. Only `x_low` is genuinely smaller. But `low`
 and `x_low` models are **16 kHz native**, which for a device that wants 16 kHz
 means no resampling at all.
+
+### "The browser sounds worse than the container": what it has not been
+
+The observation is older than this repository and has outlived three
+explanations. Each investigation eliminated a mechanism and then guessed at the
+next one, so the guesses are worth less than the eliminations. **This is the
+register of what has been ruled out, so the fifth investigation does not start
+where the first did.**
+
+| suspected | verdict | evidence |
+| --- | --- | --- |
+| The chain is quiet or mismeasured | no | a real recording measures −16.0 LUFS against a −16 target, by ffmpeg's own `ebur128` |
+| The example threw away the top octave | **yes, and fixed** | `rate: 16000` on a 22.05 kHz model, measured 38 dB down in the 8–11 kHz band. Costs Kerstin nothing — she is 16 kHz native |
+| The true-peak ceiling made one voice quieter | **yes, and fixed** | 3.0 dB under Thorsten through the same chain; the limiter in 2.2.0 |
+| The limiter distorts a peaky voice | no | 5.15 dB of reduction on Kerstin, 97.2% of the gain envelope below 20 Hz, 0.1% at or above F0, +1.27 dB inter-harmonic level-matched. Indistinguishable by ear |
+| The 16 kHz → 44.1 kHz resample costs something | no | −78.8 dB round-trip error through this package's own resampler |
+| The two levellers disagree | **3 dB, and inaudible** | one Kerstin render through ffmpeg `loudnorm` and through `postprocess`: **−19.1 vs −16.2 LUFS**, crest 18.4 vs 15.4 dB. Real and measured; judged identical by ear at natural levels |
+| The composed ich-Laut is wrong | **audible, unresolved** | native piper's ids preferred 6 times out of 6, blind, across three test designs. CONTRACT.md §3a |
+
+**Every mechanism inside this package's chain is now either inaudible or
+transparent.** What that leaves is the voice itself — a 2021 `low` model — or
+something outside this package: how a product *plays* the WAV, whether it
+re-encodes it, and whether it is on this path at all. `@diffusionstudio/vits-web`
+cannot speak Kerstin, so a page still calling `predict()` is not playing her
+however the picker is labelled.
+
+**The container is gone**, which is why none of this was settled earlier: every
+comparison since has been against a memory. The rows above with numbers in them
+were produced by rebuilding the Python half — native piper and ffmpeg 9.0.1 on
+a developer machine — and levelling *one* render through both chains rather
+than rendering once per path. That rule is in CONTRACT.md §7 and it is what
+makes the 3 dB row a fact rather than piper's sampling noise.
 
 ---
 

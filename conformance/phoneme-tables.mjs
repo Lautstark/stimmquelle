@@ -3,7 +3,7 @@
  *
  * `remapPhonemeIds` exists because the phonemizer writes the ich-Laut
  * decomposed and older models have no combining mark. The fix composes it onto
- * the precomposed `ç`, and CONTRACT.md §8 used to justify that by saying `ç` at
+ * the precomposed `ç`, and CONTRACT.md §3a used to justify that by saying `ç` at
  * id 40 is "the form she was trained on", reasoning from the fact that her map
  * holds it.
  *
@@ -71,4 +71,4 @@ console.log(`the newer table only appended: ${Object.entries(newer.map)
 console.log();
 console.log(cedillaEverywhere && idsAgree
   ? 'So the table is generic. A symbol being in it is not evidence of training.'
-  : 'The published tables no longer match what CONTRACT.md §8 describes.');
+  : 'The published tables no longer match what CONTRACT.md §3a describes.');
