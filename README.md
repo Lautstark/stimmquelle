@@ -128,8 +128,7 @@ below already reaches.
 **There is still no German female voice in a browser — but the reason has
 narrowed to one thing.** It used to be that nothing could read the older models.
 Now something can, and the harness has reported: driven through
-`usePiperRuntime`, Kerstin speaks. 63 ids, nothing dropped, the ich-Laut landing
-on `ç` at 40.
+`usePiperRuntime`, Kerstin speaks — 63 ids, the same 63 native piper produces.
 
 Her map has no combining mark at all, so native piper 1.7.0 drops it and leaves
 the bare `c` at 16 — a plosive where the ich-Laut belongs, three times in one
@@ -137,21 +136,24 @@ short sentence: *Ik, mökte, nikt.* Both paths phonemise to the same 33 phonemes
 and both produce 63 ids, so length was never the difference; the sound is, in
 exactly three positions.
 
-**Which of the two is right is open, and this README used to say it was
-settled.** The argument was that `ç` at 40 is the form she was trained on,
-because her map holds it. That does not follow:
-`conformance/phoneme-tables.mjs` shows the same 130-entry table under
-`en_GB-alan-low` and `fr_FR-gilles-low`, with `ç` at 40 in a language that has
-no ich-Laut. It is one base table piper shipped with every voice of that era, so
-a symbol being in it is evidence about piper's table and not about training.
-What is left is the phonemizer's intent, which is a real argument and a weaker
-one. `CONTRACT.md` §3a carries the correction.
+**Until 2.7.0 this package composed those three back into `ç` at 40, and it was
+wrong to.** The argument was that her map holding 40 meant she was trained on
+it. That does not follow: `conformance/phoneme-tables.mjs` shows the same
+130-entry table under `en_GB-alan-low` and `fr_FR-gilles-low`, with `ç` at 40 in
+a language that has no ich-Laut. It is one base table piper shipped with every
+voice of that era, so a symbol being in it is evidence about piper's table and
+not about training.
 
-Neither can native piper arbitrate it: the two say different words in three
-places, so comparing spectra compares two recordings saying different things —
-whichever is right. That cut both ways from the start. A listening test is the
-only instrument left, `browser_with_own_ids` reads `ok by measurement`, and
-`browser` stays `quality`.
+Asked properly, the ear disagreed too. Five German sentences, three renders a
+side, labels shuffled: **native's dropped form preferred five out of five**,
+plus a deterministic trial and a blind ranking of every candidate symbol in her
+table with a wrong control that was correctly identified. Six for six. The
+listener then recognised the difference unprompted in a recording taken from the
+live product.
+
+So the composition is gone and the two paths agree id for id.
+`PIPELINE_VERSION` is **3**. `browser` stays `quality` — that column is what
+vits-web can do, and it still cannot phonemise her.
 
 `de_DE-mls-medium` is not the answer either, and that is now measured rather
 than assumed. All 236 of its speakers were rendered saying the same sentence —
@@ -182,14 +184,17 @@ where the first did.**
 | The limiter distorts a peaky voice | no | 5.15 dB of reduction on Kerstin, 97.2% of the gain envelope below 20 Hz, 0.1% at or above F0, +1.27 dB inter-harmonic level-matched. Indistinguishable by ear |
 | The 16 kHz → 44.1 kHz resample costs something | no | −78.8 dB round-trip error through this package's own resampler |
 | The two levellers disagree | **3 dB, and inaudible** | one Kerstin render through ffmpeg `loudnorm` and through `postprocess`: **−19.1 vs −16.2 LUFS**, crest 18.4 vs 15.4 dB. Real and measured; judged identical by ear at natural levels |
-| The composed ich-Laut is wrong | **audible, unresolved** | native piper's ids preferred 6 times out of 6, blind, across three test designs. CONTRACT.md §3a |
+| The composed ich-Laut is wrong | **yes — this was it** | native piper's ids preferred 6 of 6, blind, across three test designs, then recognised unprompted in a capture from the live product. Removed in 2.7.0; CONTRACT.md §3a |
+| The app does something to the file | no | a capture from mitreden matches this package's own output: durations inside piper's render variance, levels within 1 dB, and Kerstin's 16 kHz bandwidth fingerprint |
 
-**Every mechanism inside this package's chain is now either inaudible or
-transparent.** What that leaves is the voice itself — a 2021 `low` model — or
-something outside this package: how a product *plays* the WAV, whether it
-re-encodes it, and whether it is on this path at all. `@diffusionstudio/vits-web`
-cannot speak Kerstin, so a page still calling `predict()` is not playing her
-however the picker is labelled.
+**Every mechanism in the levelling chain is inaudible or transparent. The one
+that was not is the phoneme path, and it is the answer.** The container ran
+native piper and got the bare plosive; the browser composed and got `ç`. Same
+voice, same chain, same levelling, three ids apart — and that is what a year of
+"the browser sounds worse" was.
+
+What remains is the voice itself, a 2021 `low` model that also rushes a single
+word (see `rushesFragments`), and that no amount of chain work fixes.
 
 **The container is gone**, which is why none of this was settled earlier: every
 comparison since has been against a memory. The rows above with numbers in them

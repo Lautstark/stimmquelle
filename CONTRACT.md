@@ -83,9 +83,9 @@ to 15.0 — a dynamics change, not a distortion, and the one it was added for.
 
 **The consistency argument is honoured, not abandoned.** It said recordings must
 match each other. They now do across voices as well as across days, and the
-price is paid once: `PIPELINE_VERSION` is **2**, so every cached recording
-re-renders rather than sitting under a name claiming to match rules it was not
-made under. The frozen tones above are still what stops "consistent" drifting
+price is paid once: 2.2.0 took `PIPELINE_VERSION` to **2**, so every cached
+recording re-rendered rather than sitting under a name claiming to match rules
+it was not made under. (It is **3** now — §3a, for an unrelated reason.) The frozen tones above are still what stops "consistent" drifting
 into "consistently wrong", and they were re-run against ffmpeg 9.0.1 on the day
 this changed.
 
@@ -252,7 +252,17 @@ where the model has never heard of that form.** A model whose map holds the
 combining mark is untouched — required, because those voices already speak and
 their recordings are named by fingerprints that must not move.
 
-### This disagrees with native piper, on purpose
+### It used to disagree with native piper. Since 2.7.0 it does not
+
+**The composition is gone.** A phoneme the model has no entry for is dropped and
+reported, which is exactly what native piper does, so the two now produce
+identical ids for `de_DE-kerstin-low` — asserted in `test/phonemes.test.ts`
+against a sequence captured from native piper rather than derived from this
+code.
+
+The rest of this section is the evidence for that removal, kept because the
+composition was a deliberate, argued decision and undoing one needs at least as
+much on the record as making one did.
 
 Dumped from piper 1.7.0 for *"Ich möchte noch nicht ins Bett."*:
 
@@ -315,7 +325,7 @@ that a 2021 model renders 40 less convincingly than it renders a symbol nobody
 intended. Five sentences, one listener: p = 0.06 two-sided. That is evidence,
 not proof, and it points one way.
 
-**And there is no better symbol to compose onto.** The same sentence was
+**And there was no better symbol to compose onto.** The same sentence was
 rendered with each plausible candidate in her table substituted at the three
 positions — `ç` 40, `x` 36 (the ach-Laut), `c` 16, and `ʃ` 96 as a deliberately
 wrong control — then levelled, shuffled and ranked blind. The control was
@@ -337,9 +347,20 @@ reason `usePiperRuntime` exists, and **none of this touches it**. Separately, it
 entry for the emitted form. Only the second is in question, and only for a model
 whose table lacks the mark.
 
-`remapPhonemeIds` has not been changed on the strength of it. One listener, one
-voice. What is settled is that this section may not claim the composed form is
-correct, and that the composition is not free.
+**`remapPhonemeIds` was changed on the strength of it, in 2.7.0.** One listener
+and one voice is thin evidence in the abstract; it is not thin against an
+argument that turned out to rest on a misread of a generic symbol table, and it
+is the only evidence anybody has ever produced here either way. The listener
+also recognised the difference unprompted when handed a recording from the
+product, having earlier said they did not think the ich-Laut was the problem.
+
+`PIPELINE_VERSION` is **3**. Only voices whose map lacks the mark actually
+change; the fingerprint cannot say so, and a name that lies about how a
+recording was made is the worse failure.
+
+**What was not changed is the half that was never in question:** ids come from
+the model's own table. That is what stops a `low` voice dying with an index out
+of range, and it is why `usePiperRuntime` exists.
 
 **Do not restore the stronger wording.** It reads as settled and the check above
 takes seconds to run.

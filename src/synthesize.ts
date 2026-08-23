@@ -12,12 +12,17 @@
  * mirror in `voices.json` rather than from a hardcoded `PATH_MAP` that omits
  * five of the voices its own catalogue advertises.
  *
- * THE INVARIANT THIS PATH MUST HOLD. A voice that already speaks must come out
- * of it unchanged. Identical phoneme ids mean identical inference input, which
- * means the same synthesis and no reason to re-render anything — so no pipeline
- * bump for the consumers that adopt this. Only voices that could not speak
- * before may sound different, because before they made no sound at all.
- * `test/phonemes.test.ts` asserts it against captured fixtures.
+ * THE INVARIANT THIS PATH HOLDS. A voice that already speaks comes out of it
+ * unchanged: identical phoneme ids mean identical inference input, which means
+ * the same synthesis. `test/phonemes.test.ts` asserts it against captured
+ * fixtures, and it still holds — Thorsten is byte-identical either way.
+ *
+ * What no longer follows from it is "and therefore no pipeline bump". 2.7.0
+ * removed the phoneme composition, which changes the ids for exactly the voices
+ * whose map lacks the combining mark — the `low` and `x_low` ones. Those *did*
+ * speak before, through this path, and they now speak differently and better.
+ * `PIPELINE_VERSION` is 3. The invariant is about which voices are affected,
+ * never a promise that none ever would be.
  *
  * Note that "identical audio" is not the test and cannot be: piper is a VITS
  * model with a stochastic duration predictor, and three renders of one sentence

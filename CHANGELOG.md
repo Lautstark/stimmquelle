@@ -13,6 +13,62 @@ is without anybody having to remember.
 
 ---
 
+## 2.7.0
+
+### Every recording re-renders. Kerstin now says what the container said.
+
+**`PIPELINE_VERSION` is 3.** Bump the constant in each consumer's fingerprint
+and let the caches rebuild.
+
+`remapPhonemeIds` no longer **composes**. A phoneme the model has no entry for
+in the form the phonemizer emitted it is dropped and reported — which is what
+native piper does, so the two now produce **identical ids** for
+`de_DE-kerstin-low`. `test/phonemes.test.ts` asserts that against a sequence
+captured from native piper rather than derived from this code.
+
+### Why, since composing was a deliberate decision
+
+Both halves of the argument for it failed.
+
+**The reasoning was wrong.** It held that `ç` at 40 was the form Kerstin was
+trained on, because her map contains it. `conformance/phoneme-tables.mjs` shows
+the same 130-entry table under `en_GB-alan-low` and `fr_FR-gilles-low` — `ç` at
+40 in languages with no ich-Laut. One base table, shipped with every voice of
+that era. A symbol's presence records what piper's table held, never what a
+model saw.
+
+**And the result was worse.** Five German sentences, three renders a side so the
+duration predictor averages out, labels shuffled per sentence: native's dropped
+form preferred **five out of five**, the listener tracking the side across a
+label flip. A deterministic trial went the same way, and a blind ranking of
+every candidate symbol in her table — with a wrong control that was correctly
+identified as worst — put the bare `c` first, so there was no better symbol to
+compose onto either. Six for six.
+
+Then the listener was handed a recording captured from the live product and
+recognised the difference unprompted, having earlier said they did not think the
+ich-Laut was the problem. **That is where "the browser sounds worse than the
+Python container" finally landed:** the container ran native piper and got the
+bare plosive; the browser composed. Same voice, same chain, same levelling,
+three ids apart.
+
+### What did not change
+
+The table lookup. Ids still come from the model's own `phoneme_id_map`, which is
+what stops a `low` voice dying with an index out of range and the whole reason
+`usePiperRuntime` exists. Only the composition on top of it is gone.
+
+A voice whose map carries the combining mark is **byte-identical** either way —
+Thorsten still comes out at 69 ids with `exact: true`. So 3 re-renders more than
+it strictly must: the fingerprint has no per-voice granularity, and a recording
+sitting under a name that lies about how it was made is the worse failure.
+
+### What to edit
+
+Bump `PIPELINE_VERSION` in each consumer's fingerprint. Nothing else.
+
+---
+
 ## 2.6.0
 
 ### Evidence, not code. One argument was wrong and one suspicion was not.

@@ -68,7 +68,10 @@ describe('driving piper directly', () => {
     const out = await synthesize(one.text, 'piper:de_DE-kerstin-low');
     expect(Math.max(...sessionInput)).toBeLessThan(kerstin.num_symbols);
     expect(out.rate).toBe(22050);
-    expect(out.dropped).toEqual([]);
+    // The mark her map has no symbol for is dropped and reported, as native
+    // piper does — 2.7.0 removed the composition that used to hide it here.
+    expect(out.dropped).toEqual(['\u0327', '\u0327', '\u0327']);
+    expect(out.exact).toBe(false);
   });
 
   it('leaves a working voice’s ids exactly as they were', async () => {

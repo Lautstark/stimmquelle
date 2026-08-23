@@ -26,14 +26,30 @@
  *   - Kerstin's 130-entry map has no combining marks at all. It has the
  *     precomposed `ç` (U+00E7), id 40
  *
- * So nothing is missing from the older model. The two write the same sound in
- * two Unicode forms, and only the newer one is asked.
+ * WHAT THIS USED TO DO ABOUT IT, AND WHY IT NO LONGER DOES. Until 2.7.0 a
+ * phoneme the model had no entry for was *composed* onto the one before it, so
+ * `c` + U+0327 became `ç` at 40 and Kerstin said the ich-Laut. The argument was
+ * that her map holding 40 meant 40 was the form she was trained on.
  *
- * THE RULE BELOW is therefore conservative on purpose: a phoneme is looked up
- * exactly as the phonemizer emitted it, and only if the model has never heard
- * of it is it composed onto the one before. A model whose map contains the
- * combining mark is untouched — verified byte-identical to vits-web's own ids
- * on eight German sentences.
+ * **That argument was wrong and the result was worse.** The 130-entry table is
+ * generic — `conformance/phoneme-tables.mjs` shows the same `ç` at 40 under
+ * `en_GB-alan-low` and `fr_FR-gilles-low`, and English has no ich-Laut at all.
+ * A symbol's presence records what piper's table contained, never what a model
+ * saw in training. Asked properly, the ear went the other way: five German
+ * sentences, three renders a side, labels shuffled, **native piper's dropped
+ * form preferred five out of five**, plus a deterministic trial and a blind
+ * ranking of every candidate symbol in her table with a wrong control. Six for
+ * six. CONTRACT.md §3a carries the method and the numbers.
+ *
+ * THE RULE NOW: a phoneme is looked up exactly as the phonemizer emitted it,
+ * and if the model has no entry for that form it is **dropped and reported** —
+ * which is what native piper does, so the two now agree id for id. A model
+ * whose map contains the combining mark is untouched either way, verified
+ * byte-identical to vits-web's own ids on eight German sentences.
+ *
+ * What survives from the old rule is the half that was never in question: ids
+ * come from the model's own table. That is what stops a `low` voice dying with
+ * an index out of range, and it is the whole reason this file exists.
  *
  * The phonemizer's `phoneme_ids` is used for its *structure* rather than
  * thrown away: it carries the sentence splitting, which the flat `phonemes`
@@ -85,18 +101,11 @@ export function remapPhonemeIds(
     if (phoneme === undefined) { out.push(id); continue; }   // shapes disagree; keep piper's
     if (map[phoneme]) { out.push(...map[phoneme]); continue; }
 
-    const previous = phonemes[k - 2];
-    const composed = previous === undefined ? null : (previous + phoneme).normalize('NFC');
-    if (composed && [...composed].length === 1 && map[composed]) {
-      for (let i = out.length - 1; i >= 0; i--) {
-        if (!structural.has(out[i])) { out.splice(i, 1, ...map[composed]); break; }
-      }
-      exact = false;
-      dropPad = true;
-      continue;
-    }
-    // Unknown in every form. piper's own --allow-missing-phonemes drops these
-    // rather than refusing the sentence; a caller that wants to know is told.
+    // Unknown to this model, in the form the phonemizer emitted it. Dropped —
+    // which is what native piper does, and since 2.7.0 what this does too. The
+    // composition that used to happen here is gone; the header says why.
+    // piper's own --allow-missing-phonemes drops these rather than refusing the
+    // sentence, and a caller that wants to know is told.
     dropped.push(phoneme);
     exact = false;
     dropPad = true;

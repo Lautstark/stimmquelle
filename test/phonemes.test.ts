@@ -11,7 +11,11 @@ const { cases, thorsten, kerstin, native_piper: native } = fixture as unknown as
   cases: { text: string; phonemes: string[]; phoneme_ids: number[] }[];
   thorsten: { num_symbols: number; phoneme_id_map: Record<string, number[]> };
   kerstin: { num_symbols: number; phoneme_id_map: Record<string, number[]> };
-  native_piper: { text: string; thorsten_ids: number; kerstin_ids: number };
+  native_piper: {
+    text: string; thorsten_ids: number; kerstin_ids: number;
+    /** Captured from native piper, so the equality assertion is not circular. */
+    kerstin_id_sequence: number[];
+  };
 };
 
 describe('reading ids from the model rather than from the phonemizer', () => {
@@ -44,13 +48,18 @@ describe('reading ids from the model rather than from the phonemizer', () => {
     }
   });
 
-  it('loses no phoneme doing it', () => {
-    // Dropping the cedilla would also put every id in range, and would quietly
-    // turn "ich" into something else. Nothing here is dropped: the sound exists
-    // in the old map, precomposed.
-    for (const c of cases) {
-      expect(remapPhonemeIds(c.phonemes, c.phoneme_ids, kerstin.phoneme_id_map).dropped, c.text).toEqual([]);
-    }
+  it('drops the mark the model has no symbol for, and says which', () => {
+    // This used to assert the opposite — that nothing was ever dropped, because
+    // the pair was composed onto the precomposed ç. It is not any more: the
+    // composition was removed in 2.7.0 after a blind listening test preferred
+    // the dropped form six times out of six. See CONTRACT.md §3a.
+    //
+    // What matters is that the drop is *reported* rather than silent. A caller
+    // that wants to know gets `dropped` and `exact`; nothing guesses.
+    const one = cases.find(c => c.text === 'Ich möchte noch nicht ins Bett.')!;
+    const { dropped, exact } = remapPhonemeIds(one.phonemes, one.phoneme_ids, kerstin.phoneme_id_map);
+    expect(dropped).toEqual(['\u0327', '\u0327', '\u0327']);
+    expect(exact).toBe(false);
   });
 
   it('keeps exactly one pad between phonemes', () => {
@@ -88,7 +97,7 @@ describe('reading ids from the model rather than from the phonemizer', () => {
   });
 });
 
-describe('where this deliberately disagrees with native piper', () => {
+describe('where this used to disagree with native piper, and no longer does', () => {
   const one = cases.find(c => c.text === native.text)!;
 
   it('reaches native’s length, so nothing is being added or lost', () => {
@@ -101,16 +110,27 @@ describe('where this deliberately disagrees with native piper', () => {
     expect(one.phoneme_ids).toHaveLength(native.thorsten_ids);
   });
 
-  it('puts the ich-Laut where native puts a plosive', () => {
-    // The whole disagreement, in three positions. Native piper drops the
-    // combining mark its map lacks and leaves the bare 'c' at 16 — "Ik",
-    // "mökte", "nikt". We compose to ç at 40, which is in her map, which means
-    // it is the form she was trained on.
+  it('agrees with native piper id for id, which is the point of 2.7.0', () => {
+    // THE ASSERTION THIS RELEASE EXISTS FOR. It used to be the reverse: ç at 40
+    // in three places where native leaves the bare c at 16.
+    //
+    // The reasoning for composing was that her map holding 40 meant she was
+    // trained on it. That does not follow — the 130-entry table is generic and
+    // carries 40 under English and French, which have no ich-Laut at all
+    // (conformance/phoneme-tables.mjs). And the ear went the other way: five
+    // German sentences, three renders a side, labels shuffled, native preferred
+    // five out of five, plus a deterministic trial and a symbol ranking with a
+    // control. Six for six.
+    //
+    // The sequence compared against is captured from native piper, not derived
+    // from this code, so this cannot pass by agreeing with itself.
+    const ours = remapPhonemeIds(one.phonemes, one.phoneme_ids, kerstin.phoneme_id_map).ids;
+    expect(ours).toEqual(native.kerstin_id_sequence);
+
     const ç = kerstin.phoneme_id_map['ç'][0];
     const c = kerstin.phoneme_id_map['c'][0];
-    const ours = remapPhonemeIds(one.phonemes, one.phoneme_ids, kerstin.phoneme_id_map).ids;
-    expect(ours.filter(i => i === ç)).toHaveLength(3);
-    expect(ours.filter(i => i === c)).toHaveLength(0);
+    expect(ours.filter(i => i === ç), 'no composed ç').toHaveLength(0);
+    expect(ours.filter(i => i === c), 'the bare plosive, as native leaves it').toHaveLength(3);
   });
 
   it('leaves a model that has the mark alone, which is why the disagreement is safe', () => {

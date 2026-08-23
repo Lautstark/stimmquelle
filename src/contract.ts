@@ -44,13 +44,24 @@ export const MEASURE_RATE = 48000;
  * every other constant is: the bundle has no disk. A test ties the two together,
  * because they live in files that cannot read each other.
  */
-export const VERSION = '2.6.0';
+export const VERSION = '2.7.0';
 
 /**
- * Bumped whenever §1 or §2 of the contract changes.
+ * Bumped whenever a change alters what a recording sounds like — §1 and §2, and
+ * since 2.7.0 §3a as well, because the ids reaching the model decide the audio
+ * every bit as much as the levelling applied to it afterwards.
  *
  * It goes in the fingerprint, so bumping it is what makes every consumer
  * re-render rather than keeping recordings made under the old rules under names
  * claiming to match the new ones.
+ *
+ * **3 costs more than it strictly has to, and that is deliberate.** Removing
+ * the phoneme composition changes only the voices whose map lacks the combining
+ * mark — the `low` and `x_low` ones. Thorsten and every other voice with a
+ * complete map come out byte-identical, and their recordings did not need
+ * remaking. The fingerprint has no per-voice granularity, so the choice is
+ * between re-rendering some recordings that did not need it and leaving others
+ * under a name that lies about how they were made. The second is the failure
+ * this constant exists to prevent.
  */
-export const PIPELINE_VERSION = 2;
+export const PIPELINE_VERSION = 3;
