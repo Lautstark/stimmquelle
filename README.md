@@ -129,27 +129,29 @@ below already reaches.
 narrowed to one thing.** It used to be that nothing could read the older models.
 Now something can, and the harness has reported: driven through
 `usePiperRuntime`, Kerstin speaks. 63 ids, nothing dropped, the ich-Laut landing
-on `ç` at 40 — the form she was actually trained on.
+on `ç` at 40.
 
-What that turned up is worth more than the fix. **Native piper 1.7.0 is the one
-mispronouncing her.** Her map has no combining mark at all, so native drops it
-and leaves the bare `c` at 16 — a plosive where the ich-Laut belongs, three
-times in one short sentence: *Ik, mökte, nikt.* Both paths phonemise to the same
-33 phonemes and both produce 63 ids, so length was never the difference; the
-sound is, in exactly three positions. She predates the decomposing espeak
-entirely. So this package composes and native does not, the disagreement runs in
-our favour, and it only ever touches a voice native cannot render properly
-anyway — a model whose map holds the mark comes out byte-identical either way.
-That is written into `CONTRACT.md` beside the ffmpeg true-peak entry, for the
-same reason: a deliberate disagreement with a reference implementation gets
-quietly fixed back by the next person unless the evidence sits next to it.
+Her map has no combining mark at all, so native piper 1.7.0 drops it and leaves
+the bare `c` at 16 — a plosive where the ich-Laut belongs, three times in one
+short sentence: *Ik, mökte, nikt.* Both paths phonemise to the same 33 phonemes
+and both produce 63 ids, so length was never the difference; the sound is, in
+exactly three positions.
 
-The consequence is what keeps her out. **Native piper cannot arbitrate a voice
-it is mispronouncing** — comparing spectra against native Kerstin compares two
-recordings saying different words, which is why an earlier band comparison
-pointed the wrong way. So `browser_with_own_ids` reads `ok by measurement, not
-yet by ear`, and `browser` stays `quality`. A machine has heard her. A person
-has not, and that is the only thing left that can move it.
+**Which of the two is right is open, and this README used to say it was
+settled.** The argument was that `ç` at 40 is the form she was trained on,
+because her map holds it. That does not follow:
+`conformance/phoneme-tables.mjs` shows the same 130-entry table under
+`en_GB-alan-low` and `fr_FR-gilles-low`, with `ç` at 40 in a language that has
+no ich-Laut. It is one base table piper shipped with every voice of that era, so
+a symbol being in it is evidence about piper's table and not about training.
+What is left is the phonemizer's intent, which is a real argument and a weaker
+one. `CONTRACT.md` §8 carries the correction.
+
+Neither can native piper arbitrate it: the two say different words in three
+places, so comparing spectra compares two recordings saying different things —
+whichever is right. That cut both ways from the start. A listening test is the
+only instrument left, `browser_with_own_ids` reads `ok by measurement`, and
+`browser` stays `quality`.
 
 `de_DE-mls-medium` is not the answer either, and that is now measured rather
 than assumed. All 236 of its speakers were rendered saying the same sentence —

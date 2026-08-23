@@ -13,6 +13,45 @@ is without anybody having to remember.
 
 ---
 
+## 2.6.0
+
+### Evidence, not code. One argument was wrong and one suspicion was not.
+
+Nothing in the chain, the catalogue's answers or the API changed.
+`PIPELINE_VERSION` is still 2 and nothing re-renders.
+
+**The limiter is cleared, and the numbers are written down so it stops being
+re-suspected.** A 1.5 ms look-ahead against a 4.1 ms pitch period looks like a
+limiter working inside the period, which would be intermodulation. Measured on
+`de_DE-kerstin-low` at 5.15 dB of reduction: **97.2%** of the gain envelope's
+energy sits below 20 Hz, **0.1%** at or above F0, and level-matched it adds
+**+1.27 dB** of inter-harmonic energy. Indistinguishable by ear from the same
+recording levelled without it. The 50 ms release and the running-minimum window
+smooth the envelope whatever the look-ahead does. CONTRACT.md §1.
+
+**CONTRACT.md §8 was resting on an inference that does not hold.** It said `ç`
+at id 40 is "the form she was trained on", reasoning from Kerstin's map holding
+it. New: `conformance/phoneme-tables.mjs`, which fetches six published configs
+and shows the same 130-entry table under `en_GB-alan-low` and
+`fr_FR-gilles-low` — `ç` at 40 in a language with no ich-Laut. It is one base
+table piper shipped with every voice of that era; every symbol keeps its id in
+the 152-entry table, which only ever appended. **A symbol's presence is evidence
+about piper's table, not about any model's training.**
+
+What survives is the phonemizer's intent — espeak means the ich-Laut by
+`c` + U+0327, and 40 is the only symbol in her table for that sound. A real
+argument, and a weaker one, now written as one. `remapPhonemeIds` is
+**unchanged**: the fix may well be right, and the check that would overturn it
+is a listening test, which is running.
+
+Two sentences that presupposed the answer were corrected with it: the
+disagreement with native piper is *contained* rather than *in our favour*, and
+native cannot arbitrate it in either direction, which was always true of both
+sides and only ever written about one.
+
+### What to edit
+
+Nothing.
 ## 2.5.1
 
 **`piperRuntime()`'s `base` default answered `/` in every build.** A consumer

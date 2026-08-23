@@ -57,6 +57,30 @@ back, up to four passes. Kerstin now lands at −16.2 against Thorsten's −16.0
 ffmpeg's own `ebur128`, and her crest factor falls from 17.5 dB to 14.5 — which
 is where his already was. She was the outlier; she is not squashed.
 
+### The limiter was suspected of the thing it is there to avoid, and measured
+
+A 1.5 ms look-ahead against a female voice's 4.1 ms pitch period looks like a
+limiter modulating *inside* the period, which would be intermodulation — heard
+as roughness, not as loudness. It was proposed as the reason a browser recording
+sounded worse than a container one. **It is not what happens, and the numbers
+are here so it is not proposed a fourth time.**
+
+Measured on `de_DE-kerstin-low`, the voice that needs the most of it — 5.15 dB
+of reduction, touching 38.7% of samples:
+
+| | |
+| --- | --- |
+| Energy in the gain envelope below 20 Hz | **97.2 %** |
+| At or above F0 (242 Hz) | **0.1 %** |
+| 90% of the envelope's energy below | **9 Hz**, which is 0.04 × F0 |
+| Inter-harmonic energy the limiter adds, level-matched | **+1.27 dB** |
+
+The 50 ms release and the running-minimum window smooth the envelope regardless
+of the short look-ahead, so it behaves as a volume control. Confirmed by ear on
+2026-08-23: levelled with and without the limiter, matched to −16 LUFS, the two
+are indistinguishable. What the limiter *does* change is crest factor, 18.3 dB
+to 15.0 — a dynamics change, not a distortion, and the one it was added for.
+
 **The consistency argument is honoured, not abandoned.** It said recordings must
 match each other. They now do across voices as well as across days, and the
 price is paid once: `PIPELINE_VERSION` is **2**, so every cached recording
@@ -218,20 +242,50 @@ map has the mark and keeps all 33. **Kerstin's does not, so native piper drops
 it and leaves the bare `c` at 16** — a plosive where the ich-Laut belongs, three
 times in one short sentence: *Ik, mökte, nikt.*
 
-Her map has the precomposed `ç` at 40. She predates the decomposing espeak
-entirely, so 40 is the form she was **trained on**. Native piper is feeding a
-2021 model a sequence it never saw and silently dropping the part it cannot
-express.
+Her map has the precomposed `ç` at 40.
 
-So this package composes and native does not, and **that is the correct
-direction.** The disagreement only ever touches a voice native cannot render
-properly anyway: a model whose map holds the mark comes out byte-identical.
+### That map is not evidence of what she was trained on
+
+**This paragraph used to say 40 was "the form she was trained on", reasoning
+from her map holding it. That inference is wrong** — `conformance/phoneme-tables.mjs`
+is the check:
+
+```
+de_DE-kerstin-low     de           130   ç -> 40   U+0327 -> absent
+en_GB-alan-low        en-gb-x-rp   130   ç -> 40   U+0327 -> absent
+fr_FR-gilles-low      fr           130   ç -> 40   U+0327 -> absent
+de_DE-thorsten-medium de           152   ç -> 40   U+0327 -> 140
+```
+
+`ç` sits at 40 in **English**, which has no ich-Laut. The 130 entries are one
+base table piper shipped with every voice of that era, in every language, and
+every symbol keeps its id in the 152-entry table — the newer one only ever
+appended (digits at 130-139, the combining marks after). A symbol's presence
+records what piper's table contained. It records nothing about what any
+particular model saw in training.
+
+So composing rests on **the phonemizer's intent** — espeak means the ich-Laut
+by `c` + U+0327, and 40 is the only symbol in her table for that sound. That is
+a real argument and a weaker one, and it is weaker in the direction that
+matters: it is a claim about what the symbol means, not about what the model
+learned. Whether a 2021 German model responds well to 40 is a question only a
+listener can answer, and one is being asked.
+
+**Do not restore the stronger wording.** It reads as settled and the check above
+takes seconds to run.
+
+Either way the disagreement is **contained**: it only ever touches a model
+whose map lacks the mark. One that holds it comes out byte-identical, so
+whatever the answer turns out to be, it cannot reach a voice that already
+speaks.
 
 Two things follow that are easy to get wrong later. **Do not "keep the slot"** —
 an earlier theory had native padding where the mark was, reaching 69; it does
-not, and matching that would land on 69 and match nothing. And **native piper is
-not the oracle for a voice it is mispronouncing.** Comparing spectra against
-native Kerstin compares two recordings saying different words.
+not, and matching that would land on 69 and match nothing. And **native piper
+cannot arbitrate this by measurement.** The two render different words in three
+places, so comparing spectra compares two recordings saying different things —
+whichever of them is right. That cut both ways from the beginning and this
+document only ever wrote down one of them.
 
 **Keep the phonemizer's own ids for their structure.** They carry sentence
 splitting that the flat `phonemes` array does not, and rebuilding from phonemes
