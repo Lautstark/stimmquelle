@@ -47,6 +47,21 @@ export interface Offered {
    * tries to save one.
    */
   readonly makesFile: boolean;
+  /**
+   * Whether this voice speaks with no network at all.
+   *
+   * True for piper once its model is downloaded — `downloadBytes` is what that
+   * costs and it is paid once. False for Azure, which needs the network every
+   * sentence. For a system voice it is exactly `localService`, and that is the
+   * reason this field exists: **not every voice the OS lists is on the device.**
+   * Chrome's Google voices are synthesised on Google's servers, and the API says
+   * so while nothing here was passing it on.
+   *
+   * A picker that cannot see this offers a voice that works at the desk and
+   * silently does nothing in a car — which for a talker is the moment it
+   * matters most.
+   */
+  readonly offline: boolean;
   /** The notice owed wherever this voice's audio is used, when one is owed. */
   readonly attribution?: string;
   /**
@@ -95,6 +110,8 @@ export function piperVoices(offering: Offering = {}): readonly Offered[] {
     downloadBytes: v.bytes,
     needsKey: false,
     makesFile: true,
+    // Once. `downloadBytes` is the price, and after it nothing reaches a host.
+    offline: true,
     recommended: v.recommended === true,
     ...(v.licence.attribution ? { attribution: v.licence.attribution } : {}),
   }));

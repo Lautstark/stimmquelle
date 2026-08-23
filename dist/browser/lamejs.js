@@ -1,4 +1,4 @@
-// node_modules/@breezystack/lamejs/dist/lamejs.js
+// ../../../node_modules/@breezystack/lamejs/dist/lamejs.js
 var fa = {};
 function Xa(w) {
   return new Int8Array(w);

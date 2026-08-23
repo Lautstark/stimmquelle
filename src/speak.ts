@@ -194,6 +194,7 @@ export async function azureVoices(o: AzureOptions): Promise<readonly Offered[]> 
       downloadBytes: 0,
       needsKey: true,
       makesFile: true,
+      offline: false,
       // Azure publishes hundreds and this package has no opinion on which to
       // put in front of somebody. The catalogue's picks are about the four
       // voices it can actually vouch for.

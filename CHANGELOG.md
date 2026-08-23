@@ -13,6 +13,45 @@ is without anybody having to remember.
 
 ---
 
+## 2.4.0
+
+### `offline` on every voice, because "the OS has voices" was not the same as "they work here"
+
+2.1.0 added the operating system's own voices and said they *work offline*. That
+was true of most of them and not all, and this file, the README and
+`system.ts` all said it without qualification.
+
+**Chrome's Google voices are synthesised on Google's servers.** They arrive in
+`getVoices()` in the same list and the same shape as the ones on the device, and
+on a page with no network they produce silence. The Web Speech API distinguishes
+them — `localService` — and nothing here was passing that on, so a picker had no
+way to tell a user which voice would still speak in a car.
+
+So `Offered` gains one field, and it is asked of all three sources rather than
+only the one that prompted it:
+
+| source | `offline` |
+| --- | --- |
+| piper | `true` — once the model is downloaded, which is what `downloadBytes` costs |
+| azure | `false` — the network every sentence |
+| system | exactly `localService`, the API's own answer |
+
+**It is not `downloadBytes` restated.** A cloud voice downloads nothing and still
+needs a host for every sentence; a piper voice costs 63 MB once and then needs
+none. Those are two questions and a picker promising offline speech has to ask
+the second one.
+
+Nothing about how anything sounds changed. `PIPELINE_VERSION` is still 2 and no
+recording re-renders.
+
+### What to edit
+
+Nothing, unless a consumer builds an `Offered` itself — the field is required, so
+a hand-made one will not compile until it answers. That is deliberate: a voice
+that cannot say whether it needs a host is the thing this release is about.
+
+---
+
 ## 2.3.0
 
 ### The consumer half of `usePiperRuntime`, so it stops being written twice

@@ -353,7 +353,7 @@ nothing has to be translated. The licence gate is not re-applied here because
 accept, and a test asserts the two cannot disagree.
 
 `listVoices({ system: true })` adds the **operating system's own voices**. They
-cost nothing, need no key, work offline, and every OS has a German female one —
+cost nothing, need no key, and every OS has a German female one —
 which, after piper turned out to publish exactly one licence-clear German female
 voice, is not nothing.
 
@@ -376,6 +376,18 @@ so it will not match the piper voices beside it, and it has **no gender**, so a
 gender filter excludes it — the API publishes a name and a language and nothing
 else, and guessing from the name is how somebody gets told their voice is a woman
 because it is called Anna.
+
+**And not all of them are offline, which this README used to say they were.**
+Chrome's Google voices are synthesised on Google's servers; a page with no
+network gets silence from them, and they sit in the same list looking the same
+as the ones on the device. `offline` on every entry says which is which — the
+Web Speech API's own `localService`, passed on rather than inferred. It is on
+the piper and Azure voices too, so a picker can ask one question of all three:
+piper is `true` once its model is downloaded, Azure is always `false`.
+
+That is a different question from `downloadBytes`, and neither implies the
+other. A cloud voice downloads nothing and still needs a host every sentence; a
+piper voice costs 63 MB once and then needs none.
 
 There is no `age` filter either. piper does not publish one and neither does the
 Web Speech API, so it would be a field with nothing behind it.

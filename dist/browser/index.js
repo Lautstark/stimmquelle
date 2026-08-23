@@ -445,7 +445,7 @@ var TRIM = Object.freeze({
   keepTailSec: 0.05
 });
 var MEASURE_RATE = 48e3;
-var VERSION = "2.3.0";
+var VERSION = "2.4.0";
 var PIPELINE_VERSION = 2;
 
 // src/level.ts
@@ -1053,6 +1053,7 @@ async function azureVoices(o) {
     downloadBytes: 0,
     needsKey: true,
     makesFile: true,
+    offline: false,
     // Azure publishes hundreds and this package has no opinion on which to
     // put in front of somebody. The catalogue's picks are about the four
     // voices it can actually vouch for.
@@ -1127,6 +1128,10 @@ var asOffered = (v) => ({
   downloadBytes: 0,
   needsKey: false,
   makesFile: false,
+  // Not every voice the OS lists is on the device: Chrome's Google voices are
+  // synthesised on Google's servers. The API distinguishes them and this is the
+  // only place that answer is available, so it is passed on rather than assumed.
+  offline: v.localService,
   recommended: false
 });
 function systemVoices() {
@@ -1197,6 +1202,8 @@ function piperVoices(offering = {}) {
     downloadBytes: v.bytes,
     needsKey: false,
     makesFile: true,
+    // Once. `downloadBytes` is the price, and after it nothing reaches a host.
+    offline: true,
     recommended: v.recommended === true,
     ...v.licence.attribution ? { attribution: v.licence.attribution } : {}
   }));

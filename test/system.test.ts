@@ -11,6 +11,9 @@ const voices = [
   { voiceURI: 'Anna', name: 'Anna', lang: 'de-DE', localService: true, default: true },
   { voiceURI: 'Markus', name: 'Markus', lang: 'de-DE', localService: true, default: false },
   { voiceURI: 'Samantha', name: 'Samantha', lang: 'en-US', localService: true, default: false },
+  // Chrome's Google voices are synthesised on Google's servers. Same list, same
+  // shape, and silence on a page with no network.
+  { voiceURI: 'Google Deutsch', name: 'Google Deutsch', lang: 'de-DE', localService: false, default: false },
 ];
 
 function stubSpeech(list = voices, speakImpl?: (u: unknown) => void) {
@@ -75,6 +78,26 @@ describe('system voices', () => {
     stubSpeech();
     const women = await listVoices({ gender: 'female', system: true });
     expect(women.every(v => v.source !== 'system')).toBe(true);
+  });
+
+  it('says which of them the OS actually speaks on the device', () => {
+    // Not a detail. "The OS has voices, so they work offline" was true of most
+    // and not all, and the difference is invisible until a tablet is somewhere
+    // with no signal — which for a talker is the moment it matters most.
+    stubSpeech();
+    const got = Object.fromEntries(systemVoices().map(v => [v.id, v.offline]));
+    expect(got['system:Anna']).toBe(true);
+    expect(got['system:Google Deutsch']).toBe(false);
+  });
+
+  it('reports offline as the API\'s own answer, not as a guess from the name', () => {
+    // localService is the only answer there is. Nothing here may infer it from
+    // a name, a locale, or the fact that the OS listed it at all.
+    stubSpeech();
+    for (const v of systemVoices()) {
+      const said = voices.find(o => `system:${o.voiceURI}` === v.id)!.localService;
+      expect(v.offline).toBe(said);
+    }
   });
 });
 

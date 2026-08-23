@@ -2,10 +2,9 @@
  * The voices the operating system already has, through the Web Speech API.
  *
  * Every browser has German female voices and always has. They cost nothing to
- * download, need no key, and are the only source here that works on a page with
- * no network at all — which for the German female slot, after piper turned out to
- * publish exactly one licence-clear voice and MLS turned out not to speak German,
- * is worth more than it sounds.
+ * download and need no key — which for the German female slot, after piper turned
+ * out to publish exactly one licence-clear voice and MLS turned out not to speak
+ * German, is worth more than it sounds.
  *
  * **They make no file, and that is not a limitation to be worked around.** The
  * Web Speech API hands back no samples: `speak()` is the browser making a noise,
@@ -25,6 +24,10 @@
  *   - **no gender.** The API publishes a name and a language and nothing else, so
  *     a gender filter cannot include these. Guessing from the name is how you
  *     tell somebody their voice is a woman because it is called Anna
+ *   - **not all of them are offline.** This file used to say they all were.
+ *     Chrome's Google voices are synthesised on Google's servers, and a page
+ *     with no network gets silence from them — `offline` on each entry is
+ *     `localService`, which is the API's own answer and the only one there is
  */
 import type { Offered } from './list.js';
 
@@ -54,6 +57,10 @@ const asOffered = (v: SpeechSynthesisVoice): Offered => ({
   downloadBytes: 0,
   needsKey: false,
   makesFile: false,
+  // Not every voice the OS lists is on the device: Chrome's Google voices are
+  // synthesised on Google's servers. The API distinguishes them and this is the
+  // only place that answer is available, so it is passed on rather than assumed.
+  offline: v.localService,
   recommended: false,
 });
 

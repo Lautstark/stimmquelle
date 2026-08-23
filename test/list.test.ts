@@ -33,7 +33,18 @@ describe('the offered list', () => {
       expect(['piper', 'azure']).toContain(v.source);
       expect(typeof v.downloadBytes).toBe('number');
       expect(typeof v.needsKey).toBe('boolean');
+      expect(typeof v.offline, `${v.id} offline`).toBe('boolean');
     }
+  });
+
+  it('separates what a voice costs to fetch from whether it needs a host', async () => {
+    // piper pays once and then reaches nothing; Azure downloads nothing and
+    // needs the network every sentence. downloadBytes cannot express that on
+    // its own, and a picker promising offline speech has to be able to say it.
+    azureServes(azureList);
+    const all = await listVoices({ azure: key });
+    for (const v of all.filter(v => v.source === 'piper')) expect(v.offline).toBe(true);
+    for (const v of all.filter(v => v.source === 'azure')) expect(v.offline).toBe(false);
   });
 
   it('offers only ids the licence gate would also accept', async () => {
