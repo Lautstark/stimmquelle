@@ -1,0 +1,39 @@
+// Renovate, for this repository.
+//
+// Everything general - when updates arrive, what groups with what, what may
+// merge itself - lives in Lautstark/.github and names no package. What is here
+// is the part that is true of stimmquelle and would be wrong to inherit.
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+
+  // The .json5 is spelled out on purpose: the //path/to/file syntax implies a
+  // .json extension, so omitting it looks for a file that is not there and
+  // Renovate stops before it does anything. The shorter "owner/repo:name" form
+  // implies it too.
+  extends: ["github>Lautstark/.github//renovate-shared.json5"],
+
+  packageRules: [
+    // -----------------------------------------------------------------------
+    // onnxruntime-web: this pin is the contract, not a preference
+    // -----------------------------------------------------------------------
+    //
+    // It is declared as an optional peerDependency at exactly "1.18.0", and
+    // the exactness is the statement. Consumers install the runtime
+    // themselves - mitreden and vorlaut-editor both pin the same version, one
+    // from node_modules and one from a CDN URL written into three files - and
+    // this range is what says which one satisfies this package.
+    //
+    // Renovate widening or bumping it here would announce support for a
+    // release nothing has been run against. The runtime answers this package
+    // ships were established against one browser library at one date, which
+    // LIBRARY and CHECKED in src/catalogue.ts record on purpose, and the
+    // conformance/ directory is the outside opinion behind them. Moving the
+    // version means re-establishing those, by listening, not by merging.
+    //
+    // If it is ever moved, it moves here and in both consumers together.
+    {
+      matchPackageNames: ["onnxruntime-web"],
+      enabled: false,
+    },
+  ],
+}
