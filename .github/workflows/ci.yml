@@ -3,6 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+    # A tag is the release artifact for this package — consumers resolve
+    # `#semver:` against these — so tags get the same gate as main.
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -10,20 +13,47 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+
+      # Fail before the slow steps if the tag and package.json disagree.
+      # npm resolves `#semver:^1.0.0` against the tag, but a consumer that
+      # installs it reads the version from package.json — so a mismatch
+      # ships a package that lies about which release it is.
+      #
+      # This package has a third copy of the number: VERSION in src/contract.ts,
+      # hardcoded so a vendored browser bundle can say which release it is.
+      # tools/check-exports.mjs holds that one against package.json, and it runs
+      # below — so the three are pinned together, tag included, by the two steps
+      # in this file.
+      - name: Tag matches package.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          pkg="v$(npm pkg get version | tr -d '"')"
+          if [ "$pkg" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME but package.json says $pkg"
+            exit 1
+          fi
+          echo "$GITHUB_REF_NAME matches package.json"
+
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
+
       - run: npm ci
+
       - run: npm run typecheck
+
       # The licensing rule is asserted here. A failure is a licence problem,
       # not just a broken test.
       - run: npm test
+
       - run: npm run build
+
       # An entry point nobody imports from outside the package is an entry point
       # nobody has checked. Every one of 2.0.0's was wrong.
       - run: npm run check:exports
+
       # The browser build is committed, because the consumers that need it have
       # no package manager to run `prepare` with. So it has to still match.
       - name: the committed browser build is current

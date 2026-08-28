@@ -52,7 +52,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "check:exports": "node tools/check-exports.mjs",
     "test": "vitest run",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "preversion": "npm run typecheck && npm test && npm run build && npm run check:exports"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
