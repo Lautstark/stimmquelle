@@ -1,3 +1,7 @@
 node_modules/
 dist/*
 !dist/browser/
+
+# macOS writes these into every directory it is shown; four of the five
+# sibling repositories already ignore them.
+.DS_Store
