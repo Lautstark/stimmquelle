@@ -447,7 +447,7 @@ var TRIM = Object.freeze({
   keepTailSec: 0.05
 });
 var MEASURE_RATE = 48e3;
-var VERSION = "2.7.0";
+var VERSION = "2.8.0";
 var PIPELINE_VERSION = 3;
 
 // src/level.ts
@@ -1232,6 +1232,48 @@ async function encodeMp3(samples, rate, bitrate = DEFAULT_BITRATE) {
   }
   return out;
 }
+
+// src/key.ts
+async function keyFor(text, vid, options = {}) {
+  const parsed = parseVoiceId(vid);
+  const backend = parsed?.backend ?? "piper";
+  const model = parsed?.model ?? vid;
+  const local = backend === "piper";
+  const payload = JSON.stringify([
+    text.trim(),
+    // §3.1 — stripped, and nothing else
+    backend,
+    // §3.2
+    model,
+    // §3.3 — a name, never a path (§3 "No paths")
+    local ? options.engine ?? `stimmquelle@${VERSION}` : null,
+    // §3.4
+    PIPELINE_VERSION,
+    // §3.5 — every backend, see the header
+    sound(options),
+    // §3.6, the half this package decides
+    options.out ?? null
+    // §3.6, the half it does not
+  ]);
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+function sound(o) {
+  const out = {};
+  for (const name of ["rate", "fadeSec", "padSec", "thresholdDb", "keepHeadSec", "keepTailSec"]) {
+    const value = o[name];
+    if (value !== void 0) out[name] = value;
+  }
+  return out;
+}
+async function remember(store, text, vid, options = {}) {
+  const key = await keyFor(text, vid, options);
+  const held = await store.get(key);
+  if (held) return { wav: held, key, cached: true };
+  const spoken = await speak(text, vid, options);
+  await store.put(key, spoken.wav);
+  return { wav: spoken.wav, key, cached: false, spoken };
+}
 export {
   AZURE_FORMAT,
   AZURE_RATE,
@@ -1264,6 +1306,7 @@ export {
   hasSystemVoices,
   integratedLufs,
   isAllowed,
+  keyFor,
   limitTruePeak,
   listVoices,
   loadSystemVoices,
@@ -1277,6 +1320,7 @@ export {
   qualityOf,
   refuse,
   remapPhonemeIds,
+  remember,
   resample,
   say,
   shippable,

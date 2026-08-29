@@ -13,6 +13,39 @@ is without anybody having to remember.
 
 ---
 
+## 2.8.0
+
+### §3 is code now, and it fixes a different bug in each consumer
+
+**`keyFor()` and `remember()`, exported from the root and from `/browser`.**
+CONTRACT.md §3 has specified the fingerprint since 1.0.0 and both products
+implemented it by hand. Read against each other on 2026-08-29, each had a
+different clause wrong — mitreden omits §3.5, the pipeline version, for `azure:`
+voices; vorlaut omits §3.4, the engine version, for every voice. Both were
+latent, because neither had a cache for the mistake to spoil, and both would
+have become real the moment one was added.
+
+Nothing breaks and nothing re-renders **on account of this feature**: it is
+additive, and a consumer that goes on computing its own hash is unaffected.
+
+**A consumer adopting `keyFor()` will re-render once**, because its old hash and
+this one are different formulas over the same inputs. That is a one-time cost
+with no audio behind it — no §1, §2 or §3a rule changed in this release — so a
+consumer that would rather not pay it can migrate its stored names by
+recomputing them, without re-recording anything.
+
+**`VERSION` is 2.8.0, and §3.4 puts it in every local name by default.** That is
+not new — it is what the term has always meant for a consumer that names this
+package as its engine — but `keyFor` now offers `options.engine` for a consumer
+that pins its own runtime and can name it more honestly. §3 means *the engine*:
+"the container names its engine `piper 1.7.0`; a browser names its own
+`vits-web@1.0.3`", and this package is the thing that drives them rather than
+either one.
+
+`PIPELINE_VERSION` is unchanged at 3.
+
+---
+
 ## 2.7.0
 
 ### Every recording re-renders. Kerstin now says what the container said.

@@ -44,7 +44,7 @@ export const MEASURE_RATE = 48000;
  * every other constant is: the bundle has no disk. A test ties the two together,
  * because they live in files that cannot read each other.
  */
-export const VERSION = '2.7.0';
+export const VERSION = '2.8.0';
 
 /**
  * Bumped whenever a change alters what a recording sounds like — §1 and §2, and

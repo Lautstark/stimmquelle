@@ -223,6 +223,34 @@ re-render is the smaller cost.
 Consequence a product must state plainly rather than imply: **sentences travel
 between a container and a page; recordings are made again on the other side.**
 
+### The package computes it, since 2.8.0
+
+`keyFor(text, voiceId, options)` returns the full hex; the caller truncates,
+because the length above is a per-product choice. `remember(store, …)` is the
+same name with a lookup around it, taking a `{ get, put }` the consumer owns —
+the storage stays outside, because a library owned by a sentence and a cache
+shared between them are different lifetimes for the same bytes, and a package
+that owned it would have to make one consumer wrong.
+
+**This section was implemented twice by hand first, and each copy got a
+different clause wrong.** Both were latent — neither consumer had a cache for
+the error to spoil — and both would have gone live the day one was added:
+
+* **mitreden dropped §3.5 for cloud voices**, reading §3.4's "omitted for cloud
+  backends" as covering both version terms. It does not. The levelling of §1 and
+  the trim of §2 are applied *here*, to whatever the cloud sends back, so a
+  change to either alters an Azure recording exactly as much as a piper one.
+* **vorlaut dropped §3.4 entirely**, local backends included — the term is
+  simply absent from its hash. That is the case "Two engines do not share a
+  cache" above is written against.
+
+The lesson is not that either was careless. It is that the six inputs are
+almost all *this package's* facts — the backend grammar, the model name, the
+engine identity, the pipeline number, the six knobs `postprocess` reads — and
+assembling them correctly requires knowing which of **our** changes reach which
+backend. Only §3.6's second half, what a consumer does with the WAV afterwards,
+is knowledge it has and we do not; that one is passed through opaquely.
+
 ---
 
 ## 3a. Phoneme ids come from the model, not from the phonemizer
