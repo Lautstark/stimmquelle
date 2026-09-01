@@ -447,7 +447,7 @@ var TRIM = Object.freeze({
   keepTailSec: 0.05
 });
 var MEASURE_RATE = 48e3;
-var VERSION = "2.8.0";
+var VERSION = "2.9.0";
 var PIPELINE_VERSION = 3;
 
 // src/level.ts
@@ -1173,6 +1173,11 @@ function say(text, vid, o = {}) {
 }
 
 // src/list.ts
+function labelOf(voice, among) {
+  if (!voice.quality) return voice.name;
+  const twin = among.some((o) => o.name === voice.name && o.quality !== voice.quality);
+  return twin ? `${voice.name} (${voice.quality})` : voice.name;
+}
 var language = (s) => s.toLowerCase().replace(/_/g, "-").split("-")[0];
 function matches(v, o) {
   if (o.lang && language(v.locale) !== language(o.lang)) return false;
@@ -1187,6 +1192,9 @@ function piperVoices(offering = {}) {
     lang: v.lang,
     locale: v.locale,
     gender: v.gender,
+    // Off the catalogue entry in hand rather than through `qualityOf()`, which
+    // would re-derive from an id what this object is already holding.
+    quality: v.quality,
     source: "piper",
     downloadBytes: v.bytes,
     needsKey: false,
@@ -1307,6 +1315,7 @@ export {
   integratedLufs,
   isAllowed,
   keyFor,
+  labelOf,
   limitTruePeak,
   listVoices,
   loadSystemVoices,

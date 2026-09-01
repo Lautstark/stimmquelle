@@ -22,8 +22,8 @@ export {
   type Levelled, type LevelOptions,
 } from './level.js';
 export {
-  listVoices, piperVoices,
-  type ListOptions, type Offered, type VoiceSource,
+  labelOf, listVoices, piperVoices,
+  type Distinguishable, type ListOptions, type Offered, type VoiceSource,
 } from './list.js';
 export { DEFAULT_BITRATE, encodeMp3 } from './mp3.js';
 export {

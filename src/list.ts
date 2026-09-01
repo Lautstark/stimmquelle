@@ -14,6 +14,7 @@
 import { shippable, type Offering } from './catalogue.js';
 import { azureVoices, type AzureOptions } from './speak.js';
 import { loadSystemVoices } from './system.js';
+import type { Quality } from './types.js';
 
 /** What actually renders a voice. It decides what the other fields can promise. */
 export type VoiceSource = 'piper' | 'azure' | 'system';
@@ -29,6 +30,25 @@ export interface Offered {
   readonly locale: string;
   /** `female`, `male`, or `mixed` for a multi-speaker corpus. */
   readonly gender: string;
+  /**
+   * The model's quality tier, where the backend publishes one. Absent for Azure
+   * and for a system voice: neither names a tier, and reading one out of a
+   * `ShortName` would be inventing it rather than reporting it.
+   *
+   * It is here because `labelOf` needed it and there was no honest way to ask.
+   * A consumer wanting the tier had only `id.split('-').at(-1)` — a product
+   * treating an id as structure after this package promised nothing about it
+   * beyond being *exactly what `speak()` takes*. The catalogue has held
+   * `quality` since 1.0.0; the picker's shape was simply not passing it on, and
+   * the one product that got by without it told two Thorstens apart by their
+   * download sizes, 63 MB against 114, which works and explains nothing.
+   *
+   * **A code, never a word.** A product that wants a term a person would use
+   * writes it from this, in its own language and its own tone. This package
+   * must not: bildquelle shipping a German `message` is what made bildhaft
+   * print German at an English reader.
+   */
+  readonly quality?: Quality;
   readonly source: VoiceSource;
   /**
    * Bytes fetched before this voice first speaks. 0 for a cloud backend, which
@@ -103,6 +123,65 @@ export interface ListOptions extends Offering {
   system?: boolean;
 }
 
+/**
+ * The two facts a label is decided from, so that either shape can ask.
+ *
+ * `Offered` satisfies it and so does the catalogue's own `Voice`: a consumer
+ * building its list from `shippable()` rather than `piperVoices()` is asking
+ * the same question about the same two fields, and should not have to map into
+ * a picker shape first to be allowed to ask it.
+ */
+export interface Distinguishable {
+  readonly name: string;
+  readonly quality?: Quality;
+}
+
+/**
+ * What to call this voice in the list it is being shown in.
+ *
+ * `de_DE-thorsten-medium` and `de_DE-thorsten-high` are both named "Thorsten",
+ * because a name is the speaker's and both are him. A picker offering both
+ * therefore shows one name twice, and nobody looking at it can tell the 63 MB
+ * one from the 114 MB one. The tier is appended only where a twin forces it, so
+ * a list holding one Thorsten still says "Thorsten".
+ *
+ * **`among` is the whole argument, and it is why this is not a field.** Whether
+ * a name is ambiguous is a fact about the list on screen, not about the voice.
+ * `listVoices` could label what it is about to return, and the label would be
+ * wrong the moment a picker showed a subset of it — the recommended four, a
+ * search, one language, "more voices" — every one of which is a smaller list
+ * where the twin may be gone. A label fixed against a list nobody is looking at
+ * moves the ambiguity rather than removing it, and does it invisibly.
+ *
+ * The tier appears only when a twin's tier actually **differs**: two voices
+ * sharing a name and a tier are not told apart by printing it on both, and a
+ * name whose twin has no tier at all — Azure publishes none — is left alone
+ * rather than decorated with something the other row cannot answer with.
+ *
+ * It reads as the catalogue's code, `medium` and `high`, and that is a
+ * deliberate limit rather than the best wording available. It is a word off a
+ * model file, not one a parent choosing a voice would reach for; the word they
+ * would reach for is German or English or neither, and this package answers in
+ * codes precisely so a host is never handed a sentence in the wrong language.
+ * `Offered.quality` is the field a product builds its own wording from — and
+ * vorlaut already does, showing a translated tier beside the size rather than
+ * inside the name, which is a judgement about its own picker that this function
+ * has no business making for it.
+ *
+ * Written here rather than in each picker because whether two voices share a
+ * name is a fact about the catalogue, and the catalogue is here. Three products
+ * had answered it separately: mitreden appended the tier off the id, vorlaut
+ * kept a set of the names it holds twice, and the third told them apart by
+ * download size alone. All three were right, which is exactly the state this
+ * package was made out of — see README, "Why this is not a paragraph in a
+ * README somewhere".
+ */
+export function labelOf(voice: Distinguishable, among: readonly Distinguishable[]): string {
+  if (!voice.quality) return voice.name;
+  const twin = among.some(o => o.name === voice.name && o.quality !== voice.quality);
+  return twin ? `${voice.name} (${voice.quality})` : voice.name;
+}
+
 /** `de_DE`, `de-DE` and `de` all compare equal at the language. */
 const language = (s: string): string => s.toLowerCase().replace(/_/g, '-').split('-')[0];
 
@@ -121,6 +200,9 @@ export function piperVoices(offering: Offering = {}): readonly Offered[] {
     lang: v.lang,
     locale: v.locale,
     gender: v.gender,
+    // Off the catalogue entry in hand rather than through `qualityOf()`, which
+    // would re-derive from an id what this object is already holding.
+    quality: v.quality,
     source: 'piper' as const,
     downloadBytes: v.bytes,
     needsKey: false,

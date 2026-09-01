@@ -378,7 +378,7 @@ downloads 63 MB once and the other needs the network every sentence.
 import { listVoices } from '@lautstark/stimmquelle';
 
 const voices = await listVoices({ lang: 'de', gender: 'female', azure: { key, region } });
-// → [{ id, name, lang, locale, gender, source, downloadBytes, needsKey, attribution? }]
+// → [{ id, name, lang, locale, gender, quality?, source, downloadBytes, needsKey, attribution? }]
 ```
 
 Azure appears **only when a key is passed**, and a key that does not work throws
@@ -430,6 +430,41 @@ piper voice costs 63 MB once and then needs none.
 
 There is no `age` filter either. piper does not publish one and neither does the
 Web Speech API, so it would be a field with nothing behind it.
+
+**Two voices can share a name, and `labelOf` is what tells them apart.**
+`de_DE-thorsten-medium` and `de_DE-thorsten-high` are both **Thorsten**, because
+a name is the speaker's and both are him. A picker showing both shows one name
+twice, and nobody looking at it can tell the 63 MB one from the 114 MB one:
+
+```ts
+import { labelOf, listVoices } from '@lautstark/stimmquelle';
+
+const voices = await listVoices({ lang: 'de' });
+voices.map(v => labelOf(v, voices));   // → …, 'Thorsten (medium)', 'Thorsten (high)', …
+```
+
+**The list is an argument, and that is the point.** Whether a name is ambiguous
+is a fact about what is on screen, not about the voice — so it cannot be a field
+on `Offered`, and `listVoices` deliberately does not compute one. A label fixed
+against the full list would still say *Thorsten (medium)* in a picker showing the
+recommended four, or one language, or a search, where there is only one Thorsten
+to confuse it with. Pass whichever list is actually being rendered.
+
+The tier is `quality`, **new on every offered voice** and taken straight from the
+catalogue rather than derived. It is why the id is not to be parsed: a consumer
+wanting the tier used to have `id.split('-').at(-1)` and nothing else, and `id`
+is only ever promised to be *exactly what `speak()` takes*. Azure and the
+operating system publish no tier, so theirs is absent rather than guessed, and
+`labelOf` leaves those names alone.
+
+It reads as the code — `medium`, `high` — and that is a limit rather than the
+best wording. It is a word off a model file, not one a parent choosing a voice
+would use, and the word they would use is German or English or neither. **This
+package answers in codes so a host is never handed a sentence in the wrong
+language** — bildquelle shipping a German `message` is what made bildhaft print
+German at an English reader. `quality` is what a product builds its own wording
+from; vorlaut shows a translated tier beside the size instead of inside the name,
+which is a judgement about its own picker and not one to make here.
 
 `piperVoices()` is the same thing without the network, for a page with no key.
 The lower-level catalogue — `shippable`, `byId`, `displayName` — is unchanged.

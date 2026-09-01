@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { listVoices, piperVoices, refuse, VOICES } from '../src/index.js';
+import { labelOf, listVoices, piperVoices, refuse, VOICES } from '../src/index.js';
 
 /**
  * The list a picker is built from.
@@ -198,5 +198,65 @@ describe('rushesFragments', () => {
     expect(kerstin?.rushesFragments).toBe(true);
     // A bare flag is a claim nobody can check; the measurements travel with it.
     expect(kerstin?.rushesFragments_why).toMatch(/0\.2|58%|terminal punctuation/i);
+  });
+});
+
+/**
+ * Two Thorstens, one name. The defect this fixes was visible in three pickers
+ * at once, each of which had solved it for itself.
+ */
+describe('telling two voices of one name apart', () => {
+  const shipped = piperVoices({ ownsInference: true });
+  const thorstens = shipped.filter(v => v.name === 'Thorsten');
+
+  it('carries the tier the catalogue holds, so nobody parses an id for it', () => {
+    // The absence of this field is why a consumer was reading
+    // `id.split('-').at(-1)`: an id is what speak() takes and nothing was
+    // promised about its shape.
+    expect(thorstens.map(v => v.quality).sort()).toEqual(['high', 'medium']);
+  });
+
+  it('leaves Azure and the system unlabelled rather than inventing a tier', async () => {
+    azureServes(azureList);
+    const azure = (await listVoices({ azure: key })).filter(v => v.source === 'azure');
+    expect(azure.length).toBeGreaterThan(0);
+    for (const v of azure) expect(v.quality, v.id).toBeUndefined();
+  });
+
+  it('says the tier only where a twin is actually on offer', () => {
+    expect(thorstens.length).toBe(2);
+    for (const v of thorstens) expect(labelOf(v, shipped)).toBe(`Thorsten (${v.quality})`);
+    // The same voice in a list it is alone in — the recommended four, a search,
+    // one language — is just Thorsten. This is the whole reason the list is an
+    // argument rather than a label computed once over what listVoices returns.
+    const alone = [thorstens[0]];
+    expect(labelOf(thorstens[0], alone)).toBe('Thorsten');
+  });
+
+  it('leaves every unambiguous name exactly as the catalogue writes it', () => {
+    for (const v of shipped.filter(v => v.name !== 'Thorsten')) {
+      expect(labelOf(v, shipped), v.id).toBe(v.name);
+    }
+    // Including the one that merely looks like a third Thorsten: a different
+    // corpus with a different name, and no collision to resolve.
+    expect(shipped.map(v => v.name)).toContain('Thorsten (emotional)');
+  });
+
+  it('does not print a tier that decides nothing', () => {
+    // Same name and same tier: appending it to both says nothing neither row
+    // said already, and a picker showing "Anna (medium)" twice is the defect
+    // wearing a longer string.
+    const twins = [
+      { name: 'Anna', quality: 'medium' as const },
+      { name: 'Anna', quality: 'medium' as const },
+    ];
+    expect(labelOf(twins[0], twins)).toBe('Anna');
+  });
+
+  it('answers in the catalogue\'s code, never in a language', () => {
+    // A word here is a word in somebody's language, and a package that ships
+    // one hands a host a sentence it cannot translate. `quality` is what a
+    // product builds its own wording from.
+    for (const v of thorstens) expect(labelOf(v, shipped)).toMatch(/\((x_low|low|medium|high)\)$/);
   });
 });

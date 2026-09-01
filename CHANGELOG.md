@@ -13,6 +13,70 @@ is without anybody having to remember.
 
 ---
 
+## 2.9.0
+
+### Two Thorstens, one name, three products that had each fixed it
+
+**`labelOf(voice, among)` and `Offered.quality`, exported from the root and from
+`/browser`.** `de_DE-thorsten-medium` and `de_DE-thorsten-high` both carry the
+name **Thorsten** — correctly, a name is the speaker's and both are him — so any
+picker offering both shows one name twice and nobody can tell the 63 MB one from
+the 114 MB one.
+
+Three products had answered it separately by 2026-09-01: mitreden appended the
+tier off the id, vorlaut kept a set of the names it holds twice and showed a
+translated tier beside the size, and a third told the two apart by download size
+alone. All three were right, and that is the state this package was made out of
+— README, "Why this is not a paragraph in a README somewhere". Whether two
+voices share a name is a fact about the catalogue, and the catalogue is here.
+
+Nothing is removed from `voices.json` and nothing needs to be. Dropping
+`thorsten-high` would be the wrong fix twice over: the file holds every voice
+anyone has considered, including the rejected ones with their reasons, and
+`recommended` already marks exactly one Thorsten for a picker leading with four.
+The full list has to be **readable**, not shorter.
+
+**What to edit, for a consumer carrying its own copy:**
+
+```diff
+-import { piperVoices, type Offered } from '@lautstark/stimmquelle';
++import { labelOf, piperVoices, type Offered } from '@lautstark/stimmquelle';
+-
+-export function labelOf(voice: Offered, among: readonly Offered[]): string {
+-  const twins = among.filter((other) => other.name === voice.name).length > 1;
+-  const tier = voice.id.split('-').at(-1);
+-  return twins ? `${voice.name} (${tier})` : voice.name;
+-}
+```
+
+The signature is the same and so is the output on today's catalogue, so a call
+site does not move. Two behaviours differ, both narrower: the tier is appended
+only when a twin's tier actually **differs** — printing it on two voices sharing
+a name *and* a tier tells nobody anything — and a voice with no tier at all is
+left alone rather than labelled from its id. Azure's ids carry no tier, so a
+consumer listing Azure beside piper was appending a chunk of a `ShortName` to any
+two Azure voices whose `LocalName` collided.
+
+**`quality` is why the id no longer has to be parsed.** The catalogue has held
+the tier since 1.0.0; `Offered` was simply not passing it on, and a consumer that
+wanted it had `id.split('-').at(-1)` and nothing else — treating as structure a
+field this package promises only to be *exactly what `speak()` takes*. It is
+`'x_low' | 'low' | 'medium' | 'high'` on a piper voice and **absent** on Azure and
+system voices, which publish no tier and must not be given a guessed one. Test
+the field rather than the source.
+
+It is a **code, not a word**, and `labelOf` prints the code: `Thorsten (medium)`.
+That is a word off a model file rather than one a parent choosing a voice would
+reach for — and the word they would reach for is in a language this package must
+not pick. bildquelle shipping a German `message` is what made bildhaft print
+German at an English reader. Build the wording from `quality`, in the product,
+the way vorlaut already does.
+
+Additive throughout. No audio changes, nothing re-renders: `PIPELINE_VERSION` is
+unchanged at 3.
+
+---
+
 ## 2.8.0
 
 ### §3 is code now, and it fixes a different bug in each consumer
