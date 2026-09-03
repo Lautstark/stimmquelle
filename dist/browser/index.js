@@ -447,7 +447,7 @@ var TRIM = Object.freeze({
   keepTailSec: 0.05
 });
 var MEASURE_RATE = 48e3;
-var VERSION = "2.9.0";
+var VERSION = "2.10.0";
 var PIPELINE_VERSION = 3;
 
 // src/level.ts

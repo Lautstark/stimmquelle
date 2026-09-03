@@ -61,7 +61,9 @@ for a reason that belongs to vits-web rather than to her.
 **Nothing else moved.** The picker is not exported from `.` or from `/browser`:
 it is the only module here that touches the DOM, and a page vendoring
 `dist/browser` by hand has no picker to draw and should not pay for one in
-bytes. `dist/browser/index.js` is byte-identical to 2.9.0's.
+bytes. Nothing the picker adds reaches `dist/browser/index.js`; the only
+difference from 2.9.0's is the `VERSION` string it carries so a vendored copy
+can say which release it is.
 
 **What a consumer has to do:** nothing. This is additive. Adopting it is a
 separate change per product, and it wants `@lautstark/design` ≥ 1.30.0 beside
