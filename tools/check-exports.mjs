@@ -41,13 +41,25 @@ for (const specifier of ['@lautstark/stimmquelle', '@lautstark/stimmquelle/brows
   }
 }
 
-// The two subpaths a consumer's build imports rather than its page. They carry
-// no VERSION to compare — what is being asked is only whether they resolve and
-// load, which is the half `existsSync` cannot answer, and the half that was
-// wrong for the whole of 2.0.0.
-for (const specifier of ['@lautstark/stimmquelle/runtime', '@lautstark/stimmquelle/vite']) {
+// The subpaths that are not the package's main door. None carries a VERSION to
+// compare — what is being asked is only whether it resolves and loads, which is
+// the half `existsSync` cannot answer, and the half that was wrong for the
+// whole of 2.0.0.
+//
+// `voice-picker` is here for a second reason as well. It is the one module in
+// this package that touches the DOM, and it is deliberately not re-exported
+// from index.ts — a consumer vendoring dist/browser by hand has no picker to
+// draw and should not pay for one in bytes — so nothing outside the package
+// would otherwise import it under the name a consumer writes. Loading it under
+// node also holds it to the rule that keeps it importable at all: nothing in it
+// may touch `document` at module level.
+const doors = [
+  ['@lautstark/stimmquelle/runtime', 'piperRuntime'],
+  ['@lautstark/stimmquelle/vite', 'piperVendor'],
+  ['@lautstark/stimmquelle/voice-picker', 'voicePicker'],
+];
+for (const [specifier, wanted] of doors) {
   const mod = await import(specifier);
-  const wanted = specifier.endsWith('/vite') ? 'piperVendor' : 'piperRuntime';
   if (typeof mod[wanted] !== 'function') {
     console.error(`${specifier} does not export ${wanted}()`);
     process.exit(1);

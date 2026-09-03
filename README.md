@@ -493,6 +493,42 @@ Two of the four need the direct-piper path, and that is the honest state of it:
 one**, because the only licence-clear candidates for those slots are exactly the
 two vits-web cannot reach.
 
+### Draw the picker
+
+```js
+import { voicePicker } from '@lautstark/stimmquelle/voice-picker';
+import '@lautstark/design/components.css';
+
+const picker = voicePicker({
+  voices: () => catalogue,               // read on every paint
+  current: () => settings.voice,
+  pick: (id) => { settings.voice = id; picker.refresh(); },
+  hear: (voice, onProgress) => play(voice, onProgress),   // optional
+  lang: () => LANG,                      // a value, or a function
+});
+somewhere.append(picker.node);
+```
+
+Hands back `{ node, refresh, dispose }`, the same shape as
+`@lautstark/sicherung/backup-panel` and `@lautstark/bildquelle/metacom-panel`.
+It carries its own words in German and English, and — because a shared module
+that emits markup brings its CSS — every class name it emits is drawn in
+`@lautstark/design`'s `components.css`. Three products had drawn this list for
+themselves, in the same five class names and three different stylesheets;
+`conventions.md` §5 #10 over there records what each had and what was taken from
+whom, and this module's own header carries the measurement.
+
+**It is a subpath and not part of `.` or `/browser`**, deliberately: it is the
+one module here that touches the DOM, and a page vendoring `dist/browser` by
+hand has no picker to draw and should not pay for one in bytes.
+
+The words are the picker's own, which does not contradict the rule two sections
+up. A status code or a quality tier is a fact a host phrases in its own voice,
+at whichever of its surfaces it turns up; „Schlüssel nötig" on a row this module
+builds *is* the row, and a product rephrasing it has not localised anything — it
+has produced a third picker that looks like the other two and reads differently.
+`quality` stays the exception and is still printed as the catalogue's code.
+
 ### What it deliberately is not
 
 - **not a storage layer** — no phrases, no collections, no cache beyond the

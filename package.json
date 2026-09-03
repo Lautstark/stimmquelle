@@ -35,6 +35,10 @@
     "./vite": {
       "types": "./dist/vite.d.ts",
       "default": "./dist/vite.js"
+    },
+    "./voice-picker": {
+      "types": "./dist/voice-picker.d.ts",
+      "default": "./dist/voice-picker.js"
     }
   },
   "files": [
@@ -58,6 +62,7 @@
   "devDependencies": {
     "@types/node": "^22.20.1",
     "esbuild": "^0.25.0",
+    "jsdom": "^30.0.1",
     "typescript": "^5.7.2",
     "vitest": "^3.0.0"
   },

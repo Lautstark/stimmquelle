@@ -3,7 +3,12 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM"],
+    // DOM.Iterable joined the day `voice-picker.ts` arrived: a NodeList is
+    // iterable in every browser this package runs in, and without it a
+    // `[...node.querySelectorAll(…)]` does not compile. Type declarations only
+    // — it emits nothing and widens no runtime target. @lautstark/bildquelle
+    // carries the same three for the same reason.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "strict": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,

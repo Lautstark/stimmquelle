@@ -13,6 +13,60 @@ is without anybody having to remember.
 
 ---
 
+## 2.10.0
+
+### The voice picker, which three products had drawn for themselves
+
+**`@lautstark/stimmquelle/voice-picker`, a new subpath.** `voicePicker(options)`
+hands back `{ node, refresh, dispose }`: a field to narrow the list with, the
+language pills where there is more than one language, and rows carrying a name,
+four facts and a note. It carries its own words in German and English, and every
+class name it emits is drawn in `@lautstark/design`'s `components.css` — that is
+`conventions.md` §4.12 and it is the whole reason this is a module rather than a
+paragraph telling three products what to build.
+
+**What made it worth doing is not the line count.** mitreden, vorlaut-editor and
+wochenwerk had already converged on one vocabulary — `.voices`, `.voice`,
+`.voice__name`, `.voice__facts`, `.voice__hint`, with `role="radiogroup"`,
+`aria-checked` and a roving `tabindex` — without anybody coordinating it, and
+then drew it three times. None of those names was in `components.css`, and the
+three had drifted: one product carries `class="voice__facts small muted"`
+instead of the properties, which lands 1.5px and one token step away from its
+two siblings through two utility classes nothing in the shared stylesheet owns.
+
+Reading the three against each other found more than spelling. One list has no
+roving `tabindex`, no arrow keys and no accessible name at all, so with an Azure
+key it is several hundred plain buttons between the search field and the
+settings under it. Only one product draws a chosen voice that has left the
+catalogue, so in the other two a withdrawn key makes a deliberate choice show as
+nothing chosen and the next save drops it. And in the two that do have arrow
+keys, the arrows work exactly once: the repaint is the product's, so the row
+holding focus becomes a detached node and the second press does nothing. That
+last one is nobody's fault and is fixed here, because this is the first place
+that owns both the key handler and the paint.
+
+**What it does not decide for a product.** `voices()` and `current()` are read
+on every paint; `pick()`, `hear()` and `notes()` are the product's. `notes()`
+exists because the same catalogue fact does not weigh the same in three
+products: `offline: false` is a slow start in a browser tab and silence on a
+wall-mounted board, and `makesFile: false` means "will not be levelled to match
+the others" on that board and "cannot be saved at all" where the whole output is
+a recording. The module says neither, and says the one note all three had
+already agreed on — the voice that crams single words — in both languages.
+
+`quality` is still printed as the catalogue's code inside the name, through
+`labelOf`. A tier in words reads as a ranking, and `de_DE-kerstin-low` is `low`
+for a reason that belongs to vits-web rather than to her.
+
+**Nothing else moved.** The picker is not exported from `.` or from `/browser`:
+it is the only module here that touches the DOM, and a page vendoring
+`dist/browser` by hand has no picker to draw and should not pay for one in
+bytes. `dist/browser/index.js` is byte-identical to 2.9.0's.
+
+**What a consumer has to do:** nothing. This is additive. Adopting it is a
+separate change per product, and it wants `@lautstark/design` ≥ 1.30.0 beside
+it — the rules that draw these class names ship there.
+
 ## 2.9.0
 
 ### Two Thorstens, one name, three products that had each fixed it
