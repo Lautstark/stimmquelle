@@ -1,12 +1,14 @@
 # Changelog
 
-Consumers pin this package **by tag or by commit**, so nothing here reaches
-anybody by itself. This file exists to say what changed and — where it matters —
-what a consumer has to edit before the update compiles.
+**Since 2026-09-16 the entries above this line are written by
+semantic-release** from the commit subjects, and the package is published to
+npmjs.org as `@lautstark/stimmquelle` — RELEASING.md has the flow. Everything
+below it was written by hand, for consumers that pinned this package **by tag
+or by commit**, and stays as it is.
 
-Every release from 2.0.0 on has a tag, so a pin can read as a version —
-`#v2.0.1` — rather than as a sha. Tags are what a human moves deliberately; the
-sha is still there for anyone who wants the stronger guarantee.
+This file exists to say what changed and — where it matters — what a consumer
+has to edit before the update compiles. That paragraph now goes in the body of
+the commit that makes the change, and arrives here with the release.
 
 `VERSION` is exported, so a vendored `dist/browser/index.js` can say which one it
 is without anybody having to remember.
