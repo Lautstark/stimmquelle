@@ -568,23 +568,24 @@ every recording.
 
 ## Using it
 
-It is a package, published to npmjs.org as `@lautstark/stimmquelle` — since
-2026-09-16, prebuilt, by CI, from the commit subjects; [`RELEASING.md`](RELEASING.md)
-has the flow. A consumer takes a caret range and Renovate brings a minor or a
-patch to it once its tests pass; a major waits for a person with
+It is a package, consumed **straight from GitHub and pinned** — the same as
+bildquelle, and there is no registry publish. A consumer who has not run an
+update is byte-for-byte on a known version, and nobody has to trust a version
+range for a file whose whole job is being the audited answer.
+
+```
+npm install github:Lautstark/stimmquelle#v2.10.0
+```
+
+Every release from 2.0.0 on is tagged, so the pin reads as a version rather than
+as a sha. Since 2026-09-16 the tag is cut by CI from the commit subjects —
+[`RELEASING.md`](RELEASING.md) — and Renovate moves the pin in each consumer
+when a minor or a patch passes its tests; a major waits for a person with
 [`CHANGELOG.md`](CHANGELOG.md) in front of them, which says what changed and,
-where the API moved, exactly what to edit.
-
-```
-npm install @lautstark/stimmquelle@^2.10.0
-```
-
-Before that date it was consumed straight from GitHub and pinned by tag —
-`github:Lautstark/stimmquelle#v2.10.0` — and every tag up to that one still
-resolves that way. Nothing newer will: no tag after it carries a build step.
-The page that vendors `dist/browser/index.js` by hand is the one consumer this
-never touched, and it is unchanged — the bundle stays committed, `VERSION`
-says which release it is, and CI still refuses a push where it is stale.
+where the API moved, exactly what to edit. The page that vendors
+`dist/browser/index.js` by hand is unchanged: the bundle stays committed,
+`VERSION` says which release it is, and CI still refuses a push where it is
+stale.
 
 `VERSION` is exported for the copy that has no package manager: mitreden vendors
 `dist/browser/index.js` by hand, and a file that cannot say which version it is

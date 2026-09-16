@@ -55,7 +55,8 @@
     "build:browser": "esbuild src/index.ts --bundle --format=esm --platform=browser --target=es2022 --splitting --chunk-names=[name] --outdir=dist/browser",
     "typecheck": "tsc -p tsconfig.json",
     "check:exports": "node tools/check-exports.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "@lautstark/design": "github:Lautstark/design#v1.31.3",
@@ -87,9 +88,5 @@
     "onnxruntime-web": {
       "optional": true
     }
-  },
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
   }
 }

@@ -49,9 +49,8 @@ jobs:
 
       - run: npm run typecheck
 
-      # dist/ ships in the npm tarball, built by release.yml before it packs.
-      # This is the same build, run here so a pull request cannot break it.
-      # Before the tests, because test/runtime.test.ts reads dist/runtime.js -
+      # Consumers install from git, so `prepare` runs this on their machine;
+      # it runs here so a pull request cannot break it. Before the tests, because test/runtime.test.ts reads dist/runtime.js -
       # until 2026-09-16 the `prepare` script built it during `npm ci`, and
       # the day that script went, this order was what still had to.
       - run: npm run build

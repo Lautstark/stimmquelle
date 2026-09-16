@@ -1,10 +1,10 @@
 # Changelog
 
 **Since 2026-09-16 the entries above this line are written by
-semantic-release** from the commit subjects, and the package is published to
-npmjs.org as `@lautstark/stimmquelle` — RELEASING.md has the flow. Everything
-below it was written by hand, for consumers that pinned this package **by tag
-or by commit**, and stays as it is.
+semantic-release** from the commit subjects, which also cuts the tag —
+RELEASING.md has the flow. Consumers still pin this package **by tag or by
+commit**; Renovate moves the tag. Everything below this line was written by
+hand and stays as it is.
 
 This file exists to say what changed and — where it matters — what a consumer
 has to edit before the update compiles. That paragraph now goes in the body of
