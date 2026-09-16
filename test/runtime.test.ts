@@ -67,7 +67,9 @@ describe('the base default, as it reaches a bundler', () => {
    * base to `/` whatever it was set to.
    *
    * So this asserts the shape of the emitted text. Run `npm run build` first;
-   * `npm test` in CI runs after it.
+   * `npm test` in CI runs after it - by the order of the steps in ci.yml, not
+   * by a `prepare` script, which is what built dist/ during `npm ci` until
+   * 2026-09-16 and quietly made this test's precondition true.
    */
   const built = readFileSync(new URL('../dist/runtime.js', import.meta.url), 'utf8');
 

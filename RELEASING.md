@@ -22,8 +22,8 @@ move. What changed is who cuts it.
 ## What happens on a push to main
 
 `.github/workflows/release.yml` calls the family's reusable workflow in
-`Lautstark/.github`, which runs the gate — `npm run typecheck && npm test &&
-npm run build && npm run check:exports` — checks that the tarball `npm pack`
+`Lautstark/.github`, which runs the gate — `npm run typecheck && npm run build
+&& npm test && npm run check:exports` — checks that the tarball `npm pack`
 would ship carries every entry point `package.json` declares and no `prepare`
 script, and then runs `semantic-release`, configured in `release.config.mjs`.
 
