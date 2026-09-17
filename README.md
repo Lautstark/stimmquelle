@@ -529,6 +529,50 @@ builds *is* the row, and a product rephrasing it has not localised anything — 
 has produced a third picker that looks like the other two and reads differently.
 `quality` stays the exception and is still printed as the catalogue's code.
 
+### The same list, declared — and two more pieces
+
+The `svelte/` directory ships three components as **raw `.svelte` source**,
+compiled by whichever consumer imports them. There is no build step
+here and none is coming: a `svelte` export condition is what tells
+`@sveltejs/vite-plugin-svelte` to compile them in the consumer's own pass, and
+`peerDependencies.svelte` is what keeps them out of its SSR externals. Both are
+declared; without the first, dev mode silently pre-bundles a second compiled
+copy, which is correct in the build and half-correct in dev.
+
+```svelte
+<script>
+  import VoicePicker from '@lautstark/stimmquelle/svelte/VoicePicker';
+  import AzurePanel from '@lautstark/stimmquelle/svelte/AzurePanel';
+  import PlayButton from '@lautstark/stimmquelle/svelte/PlayButton';
+</script>
+
+<VoicePicker voices={() => catalogue} current={() => settings.voice}
+  pick={choose} hear={play} lang={() => LANG} />
+```
+
+- **`VoicePicker`** is the twin of the module above: same options, same emitted
+  markup, same words — literally the same `WORDS` table, which is what
+  `src/picker-words.ts` exists for. It reads `current()` and `voices()` inside
+  a `$derived`, so a rune the host reads in either is what repaints it, and the
+  host needs no `$effect` and no `dispose`. The twenty lines the vanilla version
+  spends putting the keyboard back after a repaint are absent: a keyed `{#each}`
+  does not replace the rows, so focus never leaves them.
+- **`AzurePanel`** is the key field three products had drawn separately. The
+  stored key sits in the **placeholder**, never in the value — so the field
+  starts empty on every draw, an untouched field keeps the key it shows, and
+  removal is its own button. It **takes a probe** rather than owning one and
+  renders what that answers, Azure's own message included; the words, the plural
+  formatter and any extra notice are the product's. This is still not a key
+  store: what the panel has, it hands to `save`.
+- **`PlayButton`** is a `▶` that speaks. `text` is a thunk so the field beside it
+  is read at press time, the speech call is injected, and busy is expressed
+  **only** as `disabled` — the glyph never changes, because a `▶` swapped for `…`
+  resizes the pill and a control that jumps under the pointer reads as a
+  different control.
+
+`conventions.md` §6.8 to §6.10 in `@lautstark/design` carry the reconciliation
+each was written against, and each component's header carries the rest.
+
 ### What it deliberately is not
 
 - **not a storage layer** — no phrases, no collections, no cache beyond the

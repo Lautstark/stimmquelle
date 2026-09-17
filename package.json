@@ -39,11 +39,24 @@
     "./voice-picker": {
       "types": "./dist/voice-picker.d.ts",
       "default": "./dist/voice-picker.js"
+    },
+    "./svelte/VoicePicker": {
+      "svelte": "./svelte/VoicePicker.svelte",
+      "default": "./svelte/VoicePicker.svelte"
+    },
+    "./svelte/AzurePanel": {
+      "svelte": "./svelte/AzurePanel.svelte",
+      "default": "./svelte/AzurePanel.svelte"
+    },
+    "./svelte/PlayButton": {
+      "svelte": "./svelte/PlayButton.svelte",
+      "default": "./svelte/PlayButton.svelte"
     }
   },
   "files": [
     "dist",
     "src",
+    "svelte",
     "voices.json",
     "CONTRACT.md",
     "CHANGELOG.md",
@@ -53,21 +66,24 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json && npm run build:browser",
     "build:browser": "esbuild src/index.ts --bundle --format=esm --platform=browser --target=es2022 --splitting --chunk-names=[name] --outdir=dist/browser",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json && svelte-check --threshold error",
     "check:exports": "node tools/check-exports.mjs",
     "test": "vitest run",
     "prepare": "npm run build"
   },
   "devDependencies": {
-    "@lautstark/design": "github:Lautstark/design#v1.31.3",
+    "@lautstark/design": "github:Lautstark/design#v1.33.1",
     "@semantic-release/changelog": "^7.0.0",
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^11.0.1",
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@types/node": "^22.20.1",
     "conventional-changelog-conventionalcommits": "^9.3.1",
     "esbuild": "^0.25.0",
     "jsdom": "^30.0.1",
     "semantic-release": "^25.0.9",
+    "svelte": "^5.57.0",
+    "svelte-check": "^4.7.6",
     "typescript": "^5.7.2",
     "vitest": "^3.0.0"
   },
@@ -79,13 +95,17 @@
   },
   "peerDependencies": {
     "@diffusionstudio/piper-wasm": "^1.0.0",
-    "onnxruntime-web": "1.18.0"
+    "onnxruntime-web": "1.18.0",
+    "svelte": "^5"
   },
   "peerDependenciesMeta": {
     "@diffusionstudio/piper-wasm": {
       "optional": true
     },
     "onnxruntime-web": {
+      "optional": true
+    },
+    "svelte": {
       "optional": true
     }
   }
