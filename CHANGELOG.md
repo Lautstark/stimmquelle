@@ -1,3 +1,9 @@
+## [2.12.1](https://github.com/Lautstark/stimmquelle/compare/v2.12.0...v2.12.1) (2026-09-17)
+
+### Bug Fixes
+
+* the NUL byte that made AzurePanel.svelte invisible to grep ([3a9a938](https://github.com/Lautstark/stimmquelle/commit/3a9a9380b47db6cf396047ed07549166377cf011))
+
 ## [2.12.0](https://github.com/Lautstark/stimmquelle/compare/v2.11.0...v2.12.0) (2026-09-17)
 
 ### Features
