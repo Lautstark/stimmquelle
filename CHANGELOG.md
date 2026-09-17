@@ -1,3 +1,9 @@
+## [2.12.0](https://github.com/Lautstark/stimmquelle/compare/v2.11.0...v2.12.0) (2026-09-17)
+
+### Features
+
+* components import the build, and the region hint takes an id ([33a1dc5](https://github.com/Lautstark/stimmquelle/commit/33a1dc58fd3223cd3d88389952269eb0138fdb1e)), closes [#cloud](https://github.com/Lautstark/stimmquelle/issues/cloud)
+
 ## [2.11.0](https://github.com/Lautstark/stimmquelle/compare/v2.10.0...v2.11.0) (2026-09-17)
 
 ### Features
