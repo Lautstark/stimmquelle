@@ -154,6 +154,7 @@
     id,
     fieldId,
     regionId,
+    hintId,
     saveId,
     forgetId,
     probeId,
@@ -175,6 +176,15 @@
      *  suite reaches the field through. */
     fieldId?: string;
     regionId?: string;
+    /**
+     * The region hint's id — the paragraph `words.regionHint` fills.
+     *
+     * §6.9 gave the five props above and skipped this one, which left the only
+     * way to the line an expression about markup order: mitreden reached it as
+     * `#cloud > datalist + p`, which stops resolving the first time anything is
+     * inserted between the two. A promised name instead, like its siblings.
+     */
+    hintId?: string;
     saveId?: string;
     forgetId?: string;
     /** The live region's id. mitreden's baselines mask by id. */
@@ -352,7 +362,7 @@
   <datalist id={regionsId}
     >{#each AZURE_REGIONS as name (name)}<option value={name}></option>{/each}</datalist
   >
-  {#if words.regionHint}<p>{words.regionHint}</p>{/if}
+  {#if words.regionHint}<p id={hintId}>{words.regionHint}</p>{/if}
   <div class="acts">
     <button id={saveId} class="btn primary" type="button" disabled={checking}
       onclick={() => void keep()}>{checking ? words.saving : words.save}</button>

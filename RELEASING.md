@@ -11,8 +11,13 @@ who cuts it.
 ## What happens on a push to main
 
 `.github/workflows/release.yml` calls the family's reusable workflow in
-`Lautstark/.github`, which runs the gate — `npm run typecheck && npm run build && npm test && npm run check:exports` — and then
+`Lautstark/.github`, which runs the gate — `npm run build && npm run typecheck && npm test && npm run check:exports` — and then
 `semantic-release`, configured in `release.config.mjs`.
+
+The build is first because the shipped `.svelte` components import `../dist/`,
+which is the copy a consumer holds: `svelte-check` cannot read a component
+whose imports point at a build that is not there, and the component tests
+import the same build a product would.
 
 semantic-release reads every commit since the last `v*` tag and decides:
 

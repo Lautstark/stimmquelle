@@ -61,11 +61,35 @@
    * hook for the last of those.
    */
   import { onDestroy } from 'svelte';
-  import { labelOf } from '../src/list.js';
-  import {
-    factsOf, language, languagesIn, speaks, WORDS,
-    type Pickable, type PickerLang,
-  } from '../src/picker-words.js';
+  /* A component imports what a consumer imports: `dist`, never `../src/`.
+     2.11.0 shipped these three lines reading `../src/list.js` and
+     `../src/picker-words.js`, and a consumer compiling this file resolved them
+     to the TypeScript beside the JavaScript it had already imported. mitreden
+     measured what that costs — `vite build --sourcemap` listing both
+     `stimmquelle/dist/browser/index.js` and `stimmquelle/src/list.ts` as
+     modules of one bundle, so every consumer shipped two compiled copies of
+     these tables and functions. Nothing misbehaved at runtime, which is why it
+     survived a release: they are pure functions and a words table.
+
+     The second cost is not in the bundle. A `../src/` specifier pulls this
+     package's source into the *consumer's* type program, and with it everything
+     beside it — `list.ts` reaches `speak.ts` reaches `synthesize.ts`, whose
+     `0n` made wochenwerk's typecheck fail with „BigInt literals are not
+     available when targeting lower than ES2020" and pushed that product's
+     `target` up from ES2017. A packaging defect that can move a consumer's
+     `tsconfig` is not a tidiness problem.
+
+     `picker-words` is *not* a public entry and does not become one: nothing a
+     consumer holds comes from it. `Pickable`, `PickerLang` and `factsOf` are
+     the three names it declares that a consumer does hold, and they have always
+     had a door — `voice-picker.ts` re-exports them, so this file takes them
+     from `@lautstark/stimmquelle/voice-picker`'s build and the nominal identity
+     is the consumer's own. `WORDS`, `speaks`, `language` and `languagesIn` stay
+     internal; they come from the compiled module rather than the source only so
+     that neither cost above has a way back in. */
+  import { labelOf } from '../dist/index.js';
+  import { factsOf, type Pickable, type PickerLang } from '../dist/voice-picker.js';
+  import { language, languagesIn, speaks, WORDS } from '../dist/picker-words.js';
 
   let {
     voices,

@@ -12,10 +12,22 @@
  * and compares tag, attributes and text, node for node: "same emitted markup"
  * is checkable rather than aspirational, and a twin that drifts by one class or
  * one `aria-checked` fails here rather than in a product's baseline.
+ *
+ * ## This file imports the way a consumer imports, and that is not decoration
+ *
+ * 2.11.0 shipped with the line below reading `../src/voice-picker.js`, and that
+ * is why every component in this package was green here and the same component
+ * was a defect in every product that adopted it: the suite reached the source the
+ * components reached, so the one thing nobody was asking was whether either of
+ * them was reachable under the name a consumer writes. `dist/voice-picker.js`
+ * is exactly what `exports["./voice-picker"]` points at. The last group in this
+ * file is the guard that keeps it that way.
  */
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { flushSync, mount as render, tick, unmount, type Component } from 'svelte';
 import { describe, expect, it, vi } from 'vitest';
-import { voicePicker, type Pickable } from '../src/voice-picker.js';
+import { voicePicker, type Pickable } from '../dist/voice-picker.js';
 import AzurePanel from '../svelte/AzurePanel.svelte';
 import PlayButton from '../svelte/PlayButton.svelte';
 import VoicePicker from '../svelte/VoicePicker.svelte';
@@ -252,6 +264,18 @@ describe('the Azure panel', () => {
     done();
   });
 
+  it('gives the region hint a name of its own', () => {
+    const { root, done } = panel({ hintId: 'azurehint' });
+    const hint = root.querySelector('#azurehint')!;
+    expect(hint).not.toBeNull();
+    expect(hint.textContent).toBe(WORDS.regionHint);
+    /* The point of the prop. Until it existed the only way to this line was
+       `#cloud > datalist + p`, which is a statement about what happens to sit
+       next to what. */
+    expect(hint.previousElementSibling!.tagName.toLowerCase()).toBe('datalist');
+    done();
+  });
+
   it('pairs every label with the field it names', () => {
     const { root, done } = panel({});
     const pairs = [...root.querySelectorAll('label')]
@@ -441,5 +465,60 @@ describe('the play button', () => {
     await settle();
     expect(trouble.mock.calls.map((c) => c[0])).toEqual(['', 'Keine Stimme gewählt.']);
     done();
+  });
+});
+
+/*
+ * The one below is a packaging test rather than a behaviour one, and it is here
+ * rather than beside `check-exports.mjs` because this is the file whose blind
+ * spot it closes.
+ *
+ * Nothing a consumer suffers from a `../src/` import is visible from inside the
+ * package: the component compiles, the words are right, the markup matches node
+ * for node, and every test above passes either way. What it costs is paid
+ * outside — a second compiled copy of every module the component reaches,
+ * measured by mitreden in one bundle, and this package's whole source dragged
+ * into the consumer's type program, measured by wochenwerk as a `target` it had
+ * to raise. So the assertion is about the import specifier itself, which is the
+ * only place the defect is observable from here.
+ *
+ * It fails against 2.11.0's components, which is the point of writing it.
+ */
+describe('a shipped component imports what a consumer imports', () => {
+  /* The package root, from the runner rather than from `import.meta.url`: this
+     file runs under jsdom, where the module's own URL is not a `file:` one and
+     `readdirSync` refuses it. vitest's root is this package. */
+  const root = process.cwd();
+  const components = readdirSync(join(root, 'svelte')).filter((f) => f.endsWith('.svelte'));
+
+  /** Every specifier a component names — `from '…'`, a bare `import '…'`, and
+   *  `import('…')` — so that a lazy one cannot walk in behind a static rule. */
+  const specifiersOf = (file: string): string[] => {
+    const source = readFileSync(join(root, 'svelte', file), 'utf8');
+    return [...source.matchAll(/\bimport\s*\(?\s*['"]([^'"]+)['"]|\bfrom\s*['"]([^'"]+)['"]/g)]
+      .map((match) => match[1] ?? match[2]!);
+  };
+
+  it('finds every component the package declares', () => {
+    const declared = Object.keys(JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'))
+      .exports).filter((name) => name.startsWith('./svelte/'));
+    expect(components.slice().sort()).toEqual(declared.map((n) => `${n.slice(9)}.svelte`).sort());
+  });
+
+  it.each(components)('%s reaches none of its own package\'s source', (file) => {
+    const reached = specifiersOf(file).filter((s) => s.startsWith('.'));
+    expect(reached.filter((s) => s.startsWith('../src/'))).toEqual([]);
+  });
+
+  it.each(components)('%s reaches the build, at paths that are there', (file) => {
+    for (const specifier of specifiersOf(file).filter((s) => s.startsWith('.'))) {
+      /* A sibling component is the other relative import a component may have —
+         §6.10 has `PlayButton` moving into the picker's row wrapper one day.
+         Everything else has to be the build, because that is the copy the
+         consumer already has. */
+      const sibling = /^\.\/[A-Za-z]+\.svelte$/.test(specifier);
+      expect(sibling || specifier.startsWith('../dist/')).toBe(true);
+      expect(existsSync(resolve(root, 'svelte', specifier))).toBe(true);
+    }
   });
 });

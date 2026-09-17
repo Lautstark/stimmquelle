@@ -34,7 +34,11 @@ import { drawnClasses, emittedClasses } from '@lautstark/design/css';
 // @vitest-environment jsdom
 import { flushSync, mount as render, unmount, type Component } from 'svelte';
 import { describe, expect, it } from 'vitest';
-import { voicePicker, type Pickable } from '../src/voice-picker.js';
+/* `dist`, not `src`: what is being held to the stylesheet here is what a
+   product draws, and a product draws the build. The components beside it take
+   the same copy — `svelte-components.test.ts` has the whole reasoning and the
+   guard that keeps it true. */
+import { voicePicker, type Pickable } from '../dist/voice-picker.js';
 import AzurePanel from '../svelte/AzurePanel.svelte';
 import PlayButton from '../svelte/PlayButton.svelte';
 import VoicePicker from '../svelte/VoicePicker.svelte';

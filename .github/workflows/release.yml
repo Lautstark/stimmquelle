@@ -5,6 +5,13 @@ name: Release
 # last tag: feat is a minor, fix a patch, feat! a major, anything else no
 # release. The tag is the release - there is no registry - and nobody bumps
 # the version by hand. RELEASING.md has the whole of it.
+#
+# The build comes first, and it is not a preference. The shipped components
+# import `../dist/`, because that is the copy a consumer holds; svelte-check
+# reads those imports, so a typecheck against a checkout that has not been
+# built reports every one of them as missing. `npm run typecheck` builds first
+# for the same reason - the duplicate here is three seconds and it is what
+# keeps the order readable in the one place a person looks for it.
 
 on:
   push:
@@ -22,5 +29,5 @@ jobs:
       pull-requests: write
     uses: Lautstark/.github/.github/workflows/release.yml@main
     with:
-      gate: npm run typecheck && npm run build && npm test && npm run check:exports
+      gate: npm run build && npm run typecheck && npm test && npm run check:exports
     secrets: inherit
