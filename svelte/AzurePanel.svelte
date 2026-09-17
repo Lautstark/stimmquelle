@@ -268,7 +268,7 @@
      three consequences in the header cannot come apart: the field is emptied,
      the region field is re-seeded, and the probe is asked once. */
   $effect(() => {
-    const at = `${hasKey} ${region ?? ''}`;
+    const at = `${hasKey}\u0000${region ?? ''}`;
     if (drawn === at) return;
     drawn = at;
     typed = '';
