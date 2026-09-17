@@ -1,3 +1,9 @@
+## [2.11.0](https://github.com/Lautstark/stimmquelle/compare/v2.10.0...v2.11.0) (2026-09-17)
+
+### Features
+
+* three Svelte components beside the vanilla picker ([64e53ad](https://github.com/Lautstark/stimmquelle/commit/64e53ad3ede4bce0b85c5df66f44795b6c1709ab))
+
 # Changelog
 
 **Since 2026-09-16 the entries above this line are written by
