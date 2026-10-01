@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   decodeWav, encodeWav, integratedLufs, limitTruePeak, postprocess, resample,
   TARGET_LUFS, TARGET_PEAK_DBTP, trim, truePeakDb,
@@ -379,6 +379,49 @@ describe('the licence gate on speak()', () => {
     const { speak } = await import('../src/index.js');
     return speak('Hallo', vid);
   }
+});
+
+describe('an Azure region that is not one', () => {
+  /* The region is pasted into the hostname and the key goes in a header to
+     wherever that resolves. `evil.example/x#` made it somebody else's server. */
+  const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    void init;
+    return new Response(url.endsWith('/list') ? '[]' : new Uint8Array(0));
+  });
+
+  async function azure(region: string) {
+    const { azureVoices, speak } = await import('../src/index.js');
+    vi.stubGlobal('fetch', fetch);
+    fetch.mockClear();
+    try {
+      const options = { azure: { key: 'geheim', region } };
+      const voices = await azureVoices(options.azure).then(() => 'ok', (e: Error) => e);
+      const spoken = await speak('Hallo', 'azure:de-DE-KatjaNeural', options)
+        .then(() => 'ok', (e: Error) => e);
+      return { voices, spoken, urls: fetch.mock.calls.map(([url]) => url) };
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  }
+
+  it('never sends the key anywhere a region did not name', async () => {
+    for (const region of ['evil.example/x#', 'evil.example?', 'westeurope.evil.example',
+      'west europe', '', 'westeurope/']) {
+      const { voices, spoken, urls } = await azure(region);
+      expect(urls, region).toEqual([]);
+      expect(voices, region).toBeInstanceOf(TypeError);
+      expect(spoken, region).toBeInstanceOf(TypeError);
+      expect(String(spoken), region).toMatch(/not an Azure region/);
+    }
+  });
+
+  it('still reaches a real region, in whatever case it was stored', async () => {
+    const { urls } = await azure('WestEurope');
+    expect(urls).toEqual([
+      'https://westeurope.tts.speech.microsoft.com/cognitiveservices/voices/list',
+      'https://westeurope.tts.speech.microsoft.com/cognitiveservices/v1',
+    ]);
+  });
 });
 
 describe('the limiter itself', () => {

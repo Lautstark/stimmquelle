@@ -111,10 +111,36 @@ export interface AzureOptions {
   languages?: string[];
 }
 
-const endpoint = (region: string) =>
-  `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
-const voiceList = (region: string) =>
-  `https://${region}.tts.speech.microsoft.com/cognitiveservices/voices/list`;
+/**
+ * The host a region names, and only one Microsoft owns.
+ *
+ * The region is pasted into the hostname, and the key travels in a header to
+ * whatever that hostname turns out to be. Unchecked, `evil.example/x#` made the
+ * URL `https://evil.example/x#.tts.speech.microsoft.com/…` — a request to
+ * somebody else's server carrying `Ocp-Apim-Subscription-Key`. The region comes
+ * out of a settings field, a saved file or a query string, none of which this
+ * package can vouch for, so the check is here where the URL is built rather
+ * than in each product's form.
+ *
+ * Azure's region names are lower-case letters and digits and nothing else —
+ * `westeurope`, `germanywestcentral`, `eastus2`. Upper case is let through and
+ * folded, because DNS never minded it and a product that stored `WestEurope`
+ * worked yesterday. Anything else is a TypeError, the same class a fetch to a
+ * hostname that does not resolve dies with, so a product that already words
+ * that one as "region not reachable" words this one the same.
+ */
+function host(region: string): string {
+  if (typeof region !== 'string' || !/^[a-z0-9]+$/i.test(region)) {
+    throw new TypeError(
+      `${JSON.stringify(region)} is not an Azure region. A region is a name like `
+      + 'westeurope or eastus2: letters and digits, nothing else.',
+    );
+  }
+  return `https://${region.toLowerCase()}.tts.speech.microsoft.com`;
+}
+
+const endpoint = (region: string) => `${host(region)}/cognitiveservices/v1`;
+const voiceList = (region: string) => `${host(region)}/cognitiveservices/voices/list`;
 
 /** `de-DE-GiselaNeural` -> `de-DE`. */
 export function localeOf(name: string): string {

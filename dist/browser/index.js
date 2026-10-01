@@ -1002,8 +1002,16 @@ async function synthesizePiper(text, model, onProgress) {
 }
 var AZURE_FORMAT = "riff-16khz-16bit-mono-pcm";
 var AZURE_RATE = "-5%";
-var endpoint = (region) => `https://${region}.tts.speech.microsoft.com/cognitiveservices/v1`;
-var voiceList = (region) => `https://${region}.tts.speech.microsoft.com/cognitiveservices/voices/list`;
+function host(region) {
+  if (typeof region !== "string" || !/^[a-z0-9]+$/i.test(region)) {
+    throw new TypeError(
+      `${JSON.stringify(region)} is not an Azure region. A region is a name like westeurope or eastus2: letters and digits, nothing else.`
+    );
+  }
+  return `https://${region.toLowerCase()}.tts.speech.microsoft.com`;
+}
+var endpoint = (region) => `${host(region)}/cognitiveservices/v1`;
+var voiceList = (region) => `${host(region)}/cognitiveservices/voices/list`;
 function localeOf(name) {
   const parts = name.split("-");
   return parts.length >= 3 ? parts.slice(0, 2).join("-") : "de-DE";

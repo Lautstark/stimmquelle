@@ -30,9 +30,14 @@
    * How Azure answered.
    *
    * Shaped after the three products' own, which are character-identical: a
-   * region name that is not one is a hostname that never resolves, so the fetch
-   * dies as a `TypeError` before any status exists, while a live region with a
-   * wrong key answers 401 and `speak.ts` relays Azure's refusal as a sentence.
+   * region that does not exist dies in the fetch as a `TypeError` before any
+   * status exists, while a live region with a wrong key answers 401 and
+   * `speak.ts` relays Azure's refusal as a sentence. A region that is not even
+   * shaped like one — anything but letters and digits — never reaches a fetch
+   * at all: `speak.ts` refuses it with a `TypeError` of its own before the key
+   * goes anywhere, because `evil.example/x#` pasted into the hostname used to
+   * resolve perfectly well, to somebody else. Same class, so a probe that maps
+   * one to `unreachable` maps both.
    * `words` is Azure's own message and is handed on rather than dropped — see
    * `words.failed`.
    */
