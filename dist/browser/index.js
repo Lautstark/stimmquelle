@@ -1266,8 +1266,22 @@ async function keyFor(text, vid, options = {}) {
     // §3.5 — every backend, see the header
     sound(options),
     // §3.6, the half this package decides
-    options.out ?? null
+    options.out ?? null,
     // §3.6, the half it does not
+    /* What the cloud is asked for, on an azure: id and nowhere else.
+    
+           The prosody rate is in the SSML Azure renders from, so `-5%` and `+40%`
+           are two recordings of one sentence — and through 2.12.1 they had one
+           name, so `remember()` handed back a recording made at whatever rate a
+           product had used first. The format is the same kind of fact: it decides
+           the sample rate `postprocess` starts from. Both are spelled exactly as
+           `speak()` spends them, the default included, so a caller leaving the
+           rate out and one passing `AZURE_RATE` share a name.
+    
+           Appended only for azure, so that every piper name — the ones whose
+           recordings take a 63 MB download to make again — stays what it was.
+           Azure names change once, and a cache of them re-renders once. */
+    ...backend === "azure" ? [{ format: AZURE_FORMAT, rate: options.azure?.rate ?? AZURE_RATE }] : []
   ]);
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");

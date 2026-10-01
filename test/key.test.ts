@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { keyFor, remember, type SpokenStore } from '../src/key.js';
 import { PIPELINE_VERSION, VERSION } from '../src/contract.js';
+import { AZURE_FORMAT, AZURE_RATE } from '../src/speak.js';
 
 /**
  * CONTRACT.md §3, held against the code that now implements it.
@@ -53,6 +54,7 @@ describe('§3.5 — the pipeline version, on every backend', () => {
 
     const withPipeline = await sha([
       'Hallo', 'azure', 'de-DE-KatjaNeural', null, PIPELINE_VERSION, {}, null,
+      { format: AZURE_FORMAT, rate: AZURE_RATE },
     ]);
     expect(azure).toBe(withPipeline);
   });
@@ -120,6 +122,50 @@ describe('§3.6 — the output settings', () => {
     expect(await keyFor('Hallo', AZURE, {
       azure: { key: 'secret', region: 'westeurope' }, onProgress: () => {},
     } as never)).toBe(await keyFor('Hallo', AZURE));
+  });
+});
+
+describe('what a cloud voice is asked for', () => {
+  /* The prosody rate is in the SSML Azure renders from, so two rates are two
+     recordings. Through 2.12.1 they had one name, and `remember()` handed back
+     whichever had been made first. */
+  it('counts the Azure prosody rate, which changes what Azure renders', async () => {
+    const azure = (rate?: string) => keyFor('Hallo', AZURE, {
+      azure: { key: 'k', region: 'westeurope', ...(rate === undefined ? {} : { rate }) },
+    });
+    expect(await azure('-5%')).not.toBe(await azure('+40%'));
+    // The default is spelled out, so leaving it out and naming it agree.
+    expect(await azure()).toBe(await azure(AZURE_RATE));
+    expect(await azure()).toBe(await keyFor('Hallo', AZURE));
+  });
+
+  it('serves a recording only at the rate it was made at', async () => {
+    const held = new Map<string, Uint8Array>();
+    const s: SpokenStore = { get: (key) => held.get(key), put: () => {} };
+    held.set(await keyFor('Hallo', AZURE, { azure: { key: 'k', region: 'westeurope', rate: '-5%' } }),
+      new Uint8Array([1]));
+    // A miss goes on to speak(), and the fetch it makes is the evidence.
+    const fetch = vi.fn(async () => { throw new TypeError('offline'); });
+    vi.stubGlobal('fetch', fetch);
+    try {
+      await expect(remember(s, 'Hallo', AZURE, {
+        azure: { key: 'k', region: 'westeurope', rate: '+40%' },
+      })).rejects.toThrow('offline');
+      expect(fetch).toHaveBeenCalledOnce();
+      // And the rate it was made at still finds it, without asking anybody.
+      expect((await remember(s, 'Hallo', AZURE, {
+        azure: { key: 'k', region: 'westeurope', rate: '-5%' },
+      })).cached).toBe(true);
+      expect(fetch).toHaveBeenCalledOnce();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('leaves every piper name as it was, whatever an azure block says', async () => {
+    // The names whose recordings cost a 63 MB download to make again.
+    expect(await keyFor('Hallo', PIPER, { engine: 'e', azure: { key: 'k', region: 'r', rate: '+40%' } }))
+      .toBe(await sha(['Hallo', 'piper', 'de_DE-thorsten-medium', 'e', PIPELINE_VERSION, {}, null]));
   });
 });
 

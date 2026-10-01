@@ -246,6 +246,13 @@ the error to spoil — and both would have gone live the day one was added:
   simply absent from its hash. That is the case "Two engines do not share a
   cache" above is written against.
 
+**A cloud voice also carries what the cloud was asked for**, since the release
+after 2.12.1: for an `azure:` id the name ends with the output format and the
+SSML prosody rate, the default spelled out. The rate is in the request Azure
+renders from, so two rates are two recordings, and without it `remember()`
+served whichever had been made first. Local names are untouched; Azure names
+changed once.
+
 The lesson is not that either was careless. It is that the six inputs are
 almost all *this package's* facts — the backend grammar, the model name, the
 engine identity, the pipeline number, the six knobs `postprocess` reads — and
