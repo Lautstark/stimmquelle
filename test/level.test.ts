@@ -3,6 +3,7 @@ import {
   decodeWav, encodeWav, integratedLufs, limitTruePeak, postprocess, resample,
   TARGET_LUFS, TARGET_PEAK_DBTP, trim, truePeakDb,
 } from '../src/index.js';
+import { MAX_GAIN_DB } from '../src/level.js';
 
 /**
  * The promises, not the arithmetic.
@@ -93,6 +94,84 @@ describe('levelling', () => {
     expect(out.lufs).toBeLessThan(0);
     expect(Number.isFinite(out.gainDb)).toBe(true);
     expect(out.seconds).toBeGreaterThan(0);
+  });
+});
+
+describe('a recording with almost nothing in it', () => {
+  /*
+   * The levelling is the one stage that can make something louder than it
+   * arrived, and until this was written it had no idea when to stop. Below the
+   * −70 LUFS gate the measurement is −Infinity, the gain +Infinity, and every
+   * sample ±Infinity or NaN — which `toPcm16` clamps to full scale. A breath of
+   * an answer from a synthesiser played on a child's talker as a full-scale
+   * square wave.
+   */
+  const fullScale = (wav: Uint8Array): number =>
+    decodeWav(wav).samples.filter((v) => Math.abs(v) > 0.99).length;
+  const allFinite = (x: Float32Array): boolean => x.every((v) => Number.isFinite(v));
+
+  it('hands a tone under the gate on unlevelled rather than as a square wave', () => {
+    // −68 dBFS: under the trim threshold, so nothing is cut, and under the
+    // absolute gate once its RMS is counted.
+    const out = postprocess(tone(1, Math.pow(10, -68 / 20)), { rate: 16000 });
+    expect(out.lufs).toBe(-Infinity);
+    expect(out.gainDb).toBe(0);
+    expect(allFinite(out.samples)).toBe(true);
+    expect(fullScale(out.wav)).toBe(0);
+    expect(out.peakDb).toBeLessThan(-60);
+  });
+
+  it('hands pure silence on as silence, not as NaN', () => {
+    const out = postprocess(encodeWav(new Float32Array(22050), 22050), { rate: 16000 });
+    expect(out.gainDb).toBe(0);
+    expect(allFinite(out.samples)).toBe(true);
+    expect(decodeWav(out.wav).samples.every((v) => v === 0)).toBe(true);
+  });
+
+  it('raises a quiet one by no more than the cap, and says it fell short', () => {
+    // −60 dBFS measures about −63.7 LUFS and asks for 47.7 dB. It gets the
+    // cap, and the shortfall is visible in the numbers rather than in a hiss.
+    const out = postprocess(tone(1, Math.pow(10, -60 / 20)), { rate: 16000 });
+    expect(Number.isFinite(out.lufs)).toBe(true);
+    expect(out.gainDb).toBe(MAX_GAIN_DB);
+    expect(out.lufs + out.gainDb).toBeLessThan(TARGET_LUFS - 5);
+    expect(allFinite(out.samples)).toBe(true);
+    expect(fullScale(out.wav)).toBe(0);
+  });
+
+  it('leaves a recording that needs less than the cap exactly where it was', () => {
+    // The cap must not touch anything that ever levelled correctly — which is
+    // why it needs no PIPELINE_VERSION bump.
+    const out = postprocess(tone(2, 0.01), { rate: 16000 });
+    expect(out.gainDb).toBeLessThan(MAX_GAIN_DB);
+    const got = integratedLufs(resample(decodeWav(out.wav).samples, 16000, 48000));
+    expect(Math.abs(got - TARGET_LUFS)).toBeLessThan(0.5);
+  });
+});
+
+describe('the gain it reports', () => {
+  it('is the gain the audio received, even when the limiter runs out of passes', () => {
+    /* A quiet tone with one short burst far above it: the limiter engages on
+       every pass and the shortfall never drops under 0.1 dB, so the loop ends
+       by running out. It used to add the last shortfall after the last
+       application, and reported 26.95 dB on this signal while the audio had
+       received 17.10. Read off a stretch the limiter never touched, at the
+       input's own rate so no resampler stands between the two. */
+    const rate = 16000;
+    const x = new Float32Array(rate * 2);
+    for (let i = 0; i < x.length; i++) x[i] = 0.005 * Math.sin((2 * Math.PI * 220 * i) / rate);
+    for (let i = 0; i < 200; i++) x[rate + i] = 0.9 * Math.sin((2 * Math.PI * 300 * i) / rate);
+    const wav = encodeWav(x, rate);
+    const out = postprocess(wav, { rate });
+    expect(out.clamped).toBe(true);
+
+    const input = decodeWav(wav).samples;
+    let cross = 0, power = 0;
+    for (let i = 100; i < 300; i++) {
+      cross += out.samples[i] * input[i];
+      power += input[i] * input[i];
+    }
+    expect(out.gainDb).toBeCloseTo(20 * Math.log10(cross / power), 2);
   });
 });
 

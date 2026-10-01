@@ -726,6 +726,7 @@ function limitTruePeak(x, rate, ceilingDb) {
   }
   return { samples: out, reducedDb: lowest < 1 ? -20 * Math.log10(lowest) : 0 };
 }
+var MAX_GAIN_DB = 40;
 function postprocess(wavBytes, o = {}) {
   const rate = o.rate === void 0 ? 44100 : o.rate;
   checkRate(rate, "the output rate");
@@ -735,20 +736,20 @@ function postprocess(wavBytes, o = {}) {
   if (o.padSec) shaped = pad(shaped, inRate, o.padSec);
   const lufs = integratedLufs(resample(shaped, inRate, MEASURE_RATE));
   const out = resample(shaped, inRate, rate);
-  let gainDb = TARGET_LUFS - lufs;
+  let gainDb = Number.isFinite(lufs) ? Math.min(MAX_GAIN_DB, TARGET_LUFS - lufs) : 0;
   let levelled = out, reducedDb = 0;
-  for (let pass = 0; pass < 4; pass++) {
+  for (let pass = 0; ; pass++) {
     const gain = Math.pow(10, gainDb / 20);
     const raised = new Float32Array(out.length);
     for (let i = 0; i < out.length; i++) raised[i] = out[i] * gain;
     const limited = limitTruePeak(raised, rate, TARGET_PEAK_DBTP);
     levelled = limited.samples;
     reducedDb = limited.reducedDb;
-    if (!reducedDb) break;
+    if (!reducedDb || pass === 3) break;
     const got = integratedLufs(resample(levelled, rate, MEASURE_RATE));
     const short = TARGET_LUFS - got;
     if (!Number.isFinite(short) || Math.abs(short) < 0.1) break;
-    gainDb += short;
+    gainDb = Math.min(MAX_GAIN_DB, gainDb + short);
   }
   return {
     wav: encodeWav(levelled, rate),

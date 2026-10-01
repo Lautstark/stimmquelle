@@ -23,6 +23,8 @@ from somebody's run, the run is named.
 | True-peak ceiling | **−1.5 dBTP**, measured on the **finished** signal at the output rate — after the resample, not before it. Resampling can lift a peak above anything in its input, so a ceiling checked beforehand is one the output can still exceed. Four-times oversampled, per BS.1770-4; the headroom is for inter-sample peaks, which is why it is not 0 dBFS |
 | Gain | **One static gain over the whole file** |
 | Clamp | If the gain would push the peak past the ceiling, reduce the gain. **Never clip** |
+| Nothing audible | A recording that measures **−∞** — every block under the absolute gate — is handed on **unlevelled**, at 0 dB. There is no gain that brings nothing to −16, and the one the subtraction yields is +∞, which a 16 bit encoder clamps into a full-scale square wave |
+| Most gain | **+40 dB.** Enough for a steady signal just above §2's −50 dB trim threshold; anything quieter comes out short of the target rather than with its noise floor raised to speaking level. A shortfall is visible as `lufs + gainDb` under the target |
 | `LRA` | ffmpeg's filter string carries `LRA=11`. It is inert — `loudnorm` consults it only in dynamic mode, which single short sentences do not enter. **Not a shared parameter**, and an implementation without a dynamic mode needs no answer for it |
 
 ### No compressor. A true-peak limiter, since v2.2.0

@@ -58,6 +58,12 @@ export interface Levelled {
   readonly seconds: number;
   /** What the trimmed recording measured before the gain was applied. */
   readonly lufs: number;
+  /**
+   * The gain the audio actually received, limiter aside. 0 when `lufs` is
+   * −Infinity — nothing audible, handed on unlevelled — and never more than
+   * `MAX_GAIN_DB`, so `lufs + gainDb` short of the target means the recording
+   * was too quiet to be levelled safely.
+   */
   readonly gainDb: number;
   /**
    * True when the limiter engaged — the recording had peaks that would have
@@ -530,6 +536,39 @@ export function limitTruePeak(
 // --- The whole chain ---------------------------------------------------------
 
 /**
+ * The most `postprocess` will ever raise a recording, in dB.
+ *
+ * The gain is `TARGET_LUFS - lufs`, and nothing about that subtraction knows
+ * where it is aimed. A near-silent answer — Azure returning a breath, piper
+ * rendering a sentence it could not phonemise — can measure −65 LUFS and ask
+ * for 49 dB, which lifts the synthesiser's noise floor into a hiss at speaking
+ * level. Under the −70 LUFS gate it measured −Infinity and asked for
+ * +Infinity, and every sample became ±Infinity or NaN; `toPcm16`
+ * clamps those to full scale, so what played on a child's talker was a
+ * full-scale square wave at the pitch of whatever was nearly not there. The
+ * levelling is the one stage in this chain that can make something *louder*
+ * than it arrived, so it is the stage that has to know when to stop.
+ *
+ * Forty, because that is what the trim already calls sound and nothing below
+ * it. CONTRACT.md §2 treats anything under −50 dB peak as silence. The
+ * quietest thing it admits is a steady signal peaking just above that — a tone
+ * at −50 dBFS measures about −54 LUFS and needs 38 dB, and limiting a burst on
+ * top of it can ask for a few more (the suite's quiet-sentence-with-one-loud-
+ * consonant is that case, and lands on target). Speech a synthesiser meant to
+ * say arrives within a few dB of −16 and never comes near the cap. What is
+ * quieter than −56 LUFS is left audibly short of the target rather than having
+ * its noise floor turned into a signal, and says so: `lufs + gainDb` comes out
+ * under `TARGET_LUFS`, and the shortfall is the evidence.
+ *
+ * The cap is about noise, not about the ceiling. The true-peak limiter holds
+ * −1.5 dBTP at any finite gain; it was the infinite one that went past it.
+ *
+ * No PIPELINE_VERSION bump: a sentence a synthesiser meant to say needs a
+ * small fraction of this, so no recording made under the old rule changes.
+ */
+export const MAX_GAIN_DB = 40;
+
+/**
  * A synthesiser's WAV in, a finished WAV out.
  *
  * Trim, then the device extras if any, then level — levelling last, so it
@@ -581,20 +620,35 @@ export function postprocess(wavBytes: Uint8Array, o: LevelOptions = {}): Levelle
   // limiting the first pass is exact and the loop leaves after one measurement.
   // On de_DE-kerstin-low, which needs 4 dB of it, one pass alone still left her
   // 1.3 dB short of Thorsten, which is most of the fault this replaced.
-  let gainDb = TARGET_LUFS - lufs;
+  //
+  // A loudness that is not a number is a recording with nothing audible in it —
+  // every block under BS.1770's −70 LUFS gate, or no samples at all. There is
+  // no gain that brings nothing to −16, and the one the subtraction produces is
+  // +Infinity, which is a full-scale square wave by the time `toPcm16` has
+  // clamped it. Such a recording is handed on as it arrived, at a gain of 0 dB,
+  // which is what CONTRACT.md §2 already says about an all-silent one: left
+  // alone, so it plays and shows up as a mistake rather than as a noise. `lufs`
+  // still reports −Infinity, because that is what was measured.
+  //
+  // Everything else is capped at `MAX_GAIN_DB`, for the reason given there.
+  let gainDb = Number.isFinite(lufs) ? Math.min(MAX_GAIN_DB, TARGET_LUFS - lufs) : 0;
   let levelled = out, reducedDb = 0;
-  for (let pass = 0; pass < 4; pass++) {
+  // Four passes at most. The shortfall is added only when another pass will
+  // apply it: added after the last one, `gainDb` would report a gain the audio
+  // never received, and a levelling that misreports itself is the thing the
+  // numbers below exist to stop.
+  for (let pass = 0; ; pass++) {
     const gain = Math.pow(10, gainDb / 20);
     const raised = new Float32Array(out.length);
     for (let i = 0; i < out.length; i++) raised[i] = out[i] * gain;
     const limited = limitTruePeak(raised, rate, TARGET_PEAK_DBTP);
     levelled = limited.samples;
     reducedDb = limited.reducedDb;
-    if (!reducedDb) break;                                   // nothing was touched
+    if (!reducedDb || pass === 3) break;                     // nothing was touched, or out of passes
     const got = integratedLufs(resample(levelled, rate, MEASURE_RATE));
     const short = TARGET_LUFS - got;
     if (!Number.isFinite(short) || Math.abs(short) < 0.1) break;
-    gainDb += short;
+    gainDb = Math.min(MAX_GAIN_DB, gainDb + short);
   }
 
   return {
