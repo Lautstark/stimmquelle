@@ -478,12 +478,17 @@ function decodeWav(bytes) {
       channels = view.getUint16(body + 2, true);
       rate = view.getUint32(body + 4, true);
       bits = view.getUint16(body + 14, true);
+      if (format === 65534 && size >= 26) format = view.getUint16(body + 24, true);
     } else if (id === "data") {
       data = { at: body, size: Math.min(size, bytes.byteLength - body) };
     }
     at = body + size + size % 2;
   }
   if (!rate || !data || !channels) throw new Error("WAVE file without fmt or data");
+  if (format !== 1 && format !== 3) throw new Error(`WAVE format ${format} is neither PCM nor float`);
+  if (format === 3 ? bits !== 32 && bits !== 64 : ![8, 16, 24, 32].includes(bits)) {
+    throw new Error(`WAVE with ${bits} bit ${format === 3 ? "float" : "integer"} samples`);
+  }
   const float = format === 3;
   const width = bits / 8;
   const frames = Math.floor(data.size / (width * channels));

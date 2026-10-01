@@ -137,12 +137,26 @@ export function decodeWav(bytes: Uint8Array): { samples: Float32Array; rate: num
       channels = view.getUint16(body + 2, true);
       rate = view.getUint32(body + 4, true);
       bits = view.getUint16(body + 14, true);
+      // WAVE_FORMAT_EXTENSIBLE says what the samples are in a sub-format GUID
+      // instead, whose first two bytes are the ordinary format code. Read as it
+      // stands, 0xFFFE is "not float", and a float file decodes as integers —
+      // loud, wrong, and with no error anywhere. Anything writing more than two
+      // channels or more than 16 bits is told to use it, so a third source is
+      // likely to.
+      if (format === 0xfffe && size >= 26) format = view.getUint16(body + 24, true);
     } else if (id === 'data') {
       data = { at: body, size: Math.min(size, bytes.byteLength - body) };
     }
     at = body + size + (size % 2);        // chunks are padded to even length
   }
   if (!rate || !data || !channels) throw new Error('WAVE file without fmt or data');
+  // Said here, once, rather than discovered per sample: a width of zero bits
+  // divides the frame count by nothing and fails as a RangeError about an
+  // array length, and a compressed format (µ-law, ADPCM) would decode as noise.
+  if (format !== 1 && format !== 3) throw new Error(`WAVE format ${format} is neither PCM nor float`);
+  if (format === 3 ? bits !== 32 && bits !== 64 : ![8, 16, 24, 32].includes(bits)) {
+    throw new Error(`WAVE with ${bits} bit ${format === 3 ? 'float' : 'integer'} samples`);
+  }
 
   const float = format === 3;
   const width = bits / 8;

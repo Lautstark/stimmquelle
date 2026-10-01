@@ -248,6 +248,46 @@ describe('WAV', () => {
   it('refuses something that is not a WAV rather than producing silence', () => {
     expect(() => decodeWav(new Uint8Array(64))).toThrow(/RIFF/);
   });
+
+  /** A float WAV, written by hand, optionally in the extensible wrapper. */
+  const floatWav = (x: Float32Array, extensible: boolean): Uint8Array => {
+    const fmtSize = extensible ? 40 : 16;
+    const bytes = new Uint8Array(12 + 8 + fmtSize + 8 + x.length * 4);
+    const view = new DataView(bytes.buffer);
+    const text = (at: number, s: string) => {
+      for (let i = 0; i < s.length; i++) view.setUint8(at + i, s.charCodeAt(i));
+    };
+    text(0, 'RIFF'); view.setUint32(4, bytes.length - 8, true); text(8, 'WAVE');
+    text(12, 'fmt '); view.setUint32(16, fmtSize, true);
+    view.setUint16(20, extensible ? 0xfffe : 3, true);
+    view.setUint16(22, 1, true); view.setUint32(24, 16000, true);
+    view.setUint32(28, 64000, true); view.setUint16(32, 4, true); view.setUint16(34, 32, true);
+    if (extensible) {
+      view.setUint16(36, 22, true); view.setUint16(38, 32, true); view.setUint32(40, 4, true);
+      view.setUint16(44, 3, true);          // the sub-format GUID starts with the real code
+    }
+    const data = 20 + fmtSize;
+    text(data, 'data'); view.setUint32(data + 4, x.length * 4, true);
+    for (let i = 0; i < x.length; i++) view.setFloat32(data + 8 + i * 4, x[i], true);
+    return bytes;
+  };
+
+  it('reads float inside WAVE_FORMAT_EXTENSIBLE as float, not as integers', () => {
+    const x = new Float32Array([0, 0.5, -0.25]);
+    for (const extensible of [false, true]) {
+      const { samples } = decodeWav(floatWav(x, extensible));
+      expect([...samples]).toEqual([...x]);
+    }
+  });
+
+  it('says what it cannot read instead of failing on an array length', () => {
+    const wav = encodeWav(new Float32Array(4), 16000);
+    new DataView(wav.buffer).setUint16(34, 0, true);          // zero bits per sample
+    expect(() => decodeWav(wav)).toThrow(/0 bit/);
+    const law = encodeWav(new Float32Array(4), 16000);
+    new DataView(law.buffer).setUint16(20, 7, true);          // µ-law
+    expect(() => decodeWav(law)).toThrow(/format 7/);
+  });
 });
 
 describe('a rate that is not a rate', () => {
