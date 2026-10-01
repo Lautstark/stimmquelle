@@ -1,3 +1,15 @@
+## [2.12.2](https://github.com/Lautstark/stimmquelle/compare/v2.12.1...v2.12.2) (2026-10-01)
+
+### Bug Fixes
+
+* **key:** name an Azure recording by the rate it was spoken at ([d7df978](https://github.com/Lautstark/stimmquelle/commit/d7df978cefd34165bdf8dab41ab7a35258faf73a))
+* **level:** hand on a recording with nothing audible in it, and cap the gain ([40518f9](https://github.com/Lautstark/stimmquelle/commit/40518f94e4daaf2d405e2e93721f656455e7bb69))
+* **level:** read float inside WAVE_FORMAT_EXTENSIBLE, and refuse what it cannot read ([1fd4d05](https://github.com/Lautstark/stimmquelle/commit/1fd4d05c07b17aec6a0ee38d8182237679bbef19))
+* **picker:** hold which previews are running by voice, in both twins ([ceec19c](https://github.com/Lautstark/stimmquelle/commit/ceec19c3f64909e650321fa23c04810c122fb944))
+* **picker:** say "no match" in the Svelte twin even when a gone choice is drawn ([eb6aee8](https://github.com/Lautstark/stimmquelle/commit/eb6aee8162a855250cee4ae89738a7975eec0588))
+* **speak:** refuse an Azure region that is not a region name ([7961644](https://github.com/Lautstark/stimmquelle/commit/796164446da4f8a20723c24a81402765a33f708d))
+* **svelte:** say a thrown failure in PlayButton and AzurePanel instead of dropping it ([5634b39](https://github.com/Lautstark/stimmquelle/commit/5634b39882569bfb06f97b6143d0ad53d935366d))
+
 ## [2.12.1](https://github.com/Lautstark/stimmquelle/compare/v2.12.0...v2.12.1) (2026-09-17)
 
 ### Bug Fixes
