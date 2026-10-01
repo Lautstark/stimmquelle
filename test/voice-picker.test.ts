@@ -314,6 +314,41 @@ describe('what is offered', () => {
     expect(play.textContent).toBe('▶');
   });
 
+  /* A product repaints after every pick and every catalogue change, and the
+     disabled state used to live on the button the paint replaced: a fresh,
+     enabled `▶` appeared mid-download and a second press fetched the same
+     63 MB again. The state is the picker's now, keyed by voice. */
+  it('keeps a preview disabled across a repaint, and ends it on the button drawn now', async () => {
+    let report: (share: number) => void = () => {};
+    let finish: () => void = () => {};
+    let calls = 0;
+    const { picker } = mount({
+      hear: (_voice, onProgress) => {
+        calls += 1;
+        report = onProgress;
+        return new Promise<void>((resolve) => { finish = resolve; });
+      },
+    });
+    const play = () => picker.node.querySelector<HTMLButtonElement>('.voices__play')!;
+    play().click();
+    picker.refresh();
+    expect(play().disabled).toBe(true);
+    expect(play().getAttribute('aria-label')).toBe('Thorsten (medium) wird abgespielt');
+    play().click();
+    expect(calls).toBe(1);
+
+    // Progress reaches the button that is drawn, not the one that was pressed.
+    report(0.5);
+    expect(play().textContent).toBe('50');
+    picker.refresh();
+    expect(play().textContent).toBe('50');
+
+    finish();
+    await vi.waitFor(() => expect(play().disabled).toBe(false));
+    expect(play().textContent).toBe('▶');
+    expect(play().getAttribute('aria-label')).toBe('Thorsten (medium) probehören');
+  });
+
   /* A 63 MB model finishing after the sheet closed would otherwise paint a
      button in a tree nobody can see. */
   it('stops painting a preview once it has been disposed of', async () => {

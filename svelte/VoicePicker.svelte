@@ -61,6 +61,7 @@
    * hook for the last of those.
    */
   import { onDestroy } from 'svelte';
+  import { SvelteMap } from 'svelte/reactivity';
   /* A component imports what a consumer imports: `dist`, never `../src/`.
      2.11.0 shipped these three lines reading `../src/list.js` and
      `../src/picker-words.js`, and a consumer compiling this file resolved them
@@ -227,15 +228,22 @@
   const entry = $derived(rows.find((row) => row.live)?.voice.id ?? rows[0]?.voice.id);
 
   /**
-   * One preview at a time, with the button reporting how far the model has got.
+   * One preview per voice at a time, with the button reporting how far the
+   * model has got.
    *
    * Disabled while it runs, so a second press cannot start a second fetch of
    * the same 63 MB. Whole per cent, because it is a number read at a glance —
    * and unlike `PlayButton`, whose face deliberately never changes, this one is
    * the only thing on screen that can say a 63 MB download is happening.
+   *
+   * Keyed by voice id, because two can run at once — one press per row — and
+   * each has to end only its own. This used to be a single `playing` slot:
+   * pressing B while A downloaded moved the slot to B, and A finishing then
+   * emptied it, which re-enabled B's button half-way through B's download and
+   * let a second press start a second fetch. The vanilla twin had the same
+   * defect by another route, and both now read the same kind of map.
    */
-  let playing = $state<string | null>(null);
-  let share = $state(0);
+  const hearing = new SvelteMap<string, number>();
 
   /* A preview may still be in flight when the sheet closes: a model finishing
      after the component went would otherwise write into state nobody is
@@ -245,23 +253,23 @@
   onDestroy(() => { dead = true; });
 
   async function preview(voice: Pickable): Promise<void> {
-    playing = voice.id;
-    share = 0;
+    if (hearing.has(voice.id)) return;
+    hearing.set(voice.id, 0);
     try {
       await hear?.(voice, (reached) => {
-        if (!dead) share = reached;
+        if (!dead && hearing.has(voice.id)) hearing.set(voice.id, reached);
       });
     } finally {
-      if (!dead) {
-        playing = null;
-        share = 0;
-      }
+      if (!dead) hearing.delete(voice.id);
     }
   }
 
   /** What the preview button says. `…` until there is a share worth printing. */
-  const glyph = (row: Drawn): string => (playing !== row.voice.id ? '▶'
-    : share > 0 && share < 1 ? String(Math.round(share * 100)) : '…');
+  function glyph(row: Drawn): string {
+    const share = hearing.get(row.voice.id);
+    return share === undefined ? '▶'
+      : share > 0 && share < 1 ? String(Math.round(share * 100)) : '…';
+  }
 
   /** Arrow keys move the choice, as they do in any radio group. */
   function step(event: KeyboardEvent): void {
@@ -317,8 +325,8 @@
     >{#each rows as row (row.voice.id)}<div class="voices__row"
         >{#if hear}<button class="btn quiet voices__play" type="button"
             title={say.hearTitle}
-            aria-label={playing === row.voice.id ? say.hearing(row.name) : say.hear(row.name)}
-            disabled={!row.canHear || playing === row.voice.id}
+            aria-label={hearing.has(row.voice.id) ? say.hearing(row.name) : say.hear(row.name)}
+            disabled={!row.canHear || hearing.has(row.voice.id)}
             onclick={() => void preview(row.voice)}>{glyph(row)}</button
           >{/if}<button class="voice" type="button" data-id={row.voice.id}
           role="radio" aria-checked={row.live}

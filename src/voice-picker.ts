@@ -295,29 +295,65 @@ export function voicePicker(options: VoicePickerOptions): VoicePicker {
   node.append(field, filters, list);
 
   /**
+   * The previews in flight, by voice id, with how far each model has got.
+   *
+   * One preview *per voice* at a time, and that has to be a fact held here
+   * rather than a property of a button. It used to be `press.disabled`, and a
+   * button does not survive a paint: `refresh()` — which a product calls after
+   * every pick, and on every catalogue change — drew a fresh, enabled `▶` in
+   * the middle of a download, and the second press started a second fetch of
+   * the same 63 MB. When the first finished, its `finally` restored a button
+   * that was no longer in the tree. Now every paint reads this map, and a
+   * running preview finds its button by voice id rather than by holding one.
+   */
+  const hearing = new Map<string, number>();
+
+  /** What each drawn preview button was drawn for, so a running preview can
+   *  dress it again without holding on to it. Weak, because a paint discards
+   *  every button the last one drew. */
+  const drawnFor = new WeakMap<HTMLButtonElement, { id: string; name: string; canHear: boolean }>();
+
+  /** Face, name and `disabled` of one preview button, from `hearing`. */
+  function dress(play: HTMLButtonElement): void {
+    const what = drawnFor.get(play);
+    if (!what) return;
+    const say = WORDS[langNow()];
+    const share = hearing.get(what.id);
+    play.textContent = share === undefined ? '▶'
+      : share > 0 && share < 1 ? String(Math.round(share * 100)) : '…';
+    play.setAttribute('aria-label', share === undefined ? say.hear(what.name) : say.hearing(what.name));
+    // Drawn and disabled rather than removed, so the row keeps its shape and
+    // the act stays visible as one that exists and cannot run right now.
+    play.disabled = !what.canHear || share !== undefined;
+  }
+
+  /** Every button a voice's preview is drawn on now, whichever paint drew it. */
+  function redress(id: string): void {
+    for (const play of list.querySelectorAll<HTMLButtonElement>('.voices__play'))
+      if (drawnFor.get(play)?.id === id) dress(play);
+  }
+
+  /**
    * One preview, with the button reporting how far the model has got.
    *
    * Disabled while it runs, so a second press cannot start a second fetch of
    * the same 63 MB. Whole per cent, because it is a number read at a glance.
    */
-  async function preview(voice: Pickable, press: HTMLButtonElement, name: string): Promise<void> {
-    const idle = press.textContent;
-    press.disabled = true;
-    press.textContent = '…';
-    press.setAttribute('aria-label', WORDS[langNow()].hearing(name));
+  async function preview(voice: Pickable): Promise<void> {
+    if (hearing.has(voice.id)) return;
+    hearing.set(voice.id, 0);
+    redress(voice.id);
     try {
       await options.hear?.(voice, (share) => {
-        if (dead) return;
-        press.textContent = share > 0 && share < 1 ? String(Math.round(share * 100)) : '…';
+        if (dead || !hearing.has(voice.id)) return;
+        hearing.set(voice.id, share);
+        redress(voice.id);
       });
     } finally {
+      hearing.delete(voice.id);
       // The picker may be gone by now: a model finishing after the sheet closed
       // would otherwise paint a button nobody can see. See `dispose`.
-      if (!dead) {
-        press.disabled = false;
-        press.textContent = idle;
-        press.setAttribute('aria-label', WORDS[langNow()].hear(name));
-      }
+      if (!dead) redress(voice.id);
     }
   }
 
@@ -349,13 +385,10 @@ export function voicePicker(options: VoicePickerOptions): VoicePicker {
       const play = document.createElement('button');
       play.type = 'button';
       play.className = 'btn quiet voices__play';
-      play.textContent = '▶';
       play.title = say.hearTitle;
-      play.setAttribute('aria-label', say.hear(name));
-      // Drawn and disabled rather than removed, so the row keeps its shape and
-      // the act stays visible as one that exists and cannot run right now.
-      play.disabled = !canHear;
-      play.addEventListener('click', () => void preview(voice, play, name));
+      drawnFor.set(play, { id: voice.id, name, canHear });
+      dress(play);
+      play.addEventListener('click', () => void preview(voice));
       wrap.append(play);
     }
 

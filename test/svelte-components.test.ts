@@ -220,6 +220,39 @@ describe('the Svelte picker keeps what the extraction was for', () => {
     with_.done();
   });
 
+  it('keeps a preview disabled until its own download ends, not until another does', async () => {
+    /* A single `playing` slot: B pressed while A downloads moved the slot to
+       B, A finishing emptied it, and B's button came back on half-way through
+       B's download — so a second press started a second fetch of 63 MB. */
+    const pending = new Map<string, () => void>();
+    const calls: string[] = [];
+    const { root, done } = draw(VoicePicker, {
+      voices: () => GERMAN, current: () => undefined, pick: () => {},
+      hear: (voice: Pickable) => {
+        calls.push(voice.id);
+        return new Promise<void>((resolve) => { pending.set(voice.id, resolve); });
+      },
+    });
+    const plays = () => [...root.querySelectorAll<HTMLButtonElement>('.voices__play')];
+    plays()[0]!.click();
+    flushSync();
+    plays()[1]!.click();
+    flushSync();
+    expect(plays().slice(0, 2).map((b) => b.disabled)).toEqual([true, true]);
+
+    pending.get(GERMAN[0]!.id)!();
+    await settle();
+    expect(plays()[0]!.disabled).toBe(false);
+    expect(plays()[1]!.disabled, 'B is still downloading').toBe(true);
+    plays()[1]!.click();
+    expect(calls).toEqual([GERMAN[0]!.id, GERMAN[1]!.id]);
+
+    pending.get(GERMAN[1]!.id)!();
+    await settle();
+    expect(plays()[1]!.disabled).toBe(false);
+    done();
+  });
+
   it('emits no .small, .muted or .faint', () => {
     const { root, done } = draw(VoicePicker, {
       voices: () => VOICES, current: () => undefined, pick: () => {}, hear: async () => {},
