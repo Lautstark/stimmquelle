@@ -268,6 +268,22 @@
   /** Which key-and-region the panel has already drawn itself for. */
   let drawn: string | null = null;
 
+  /**
+   * Which answer the probe line is waiting for.
+   *
+   * A probe is a network round trip and two can be out at once — the stored
+   * region moves while the first is still asking, or a save probes the typed
+   * key while the arrival probe for the stored one has not come back. The
+   * answers arrive in whatever order Azure sends them, and the older one
+   * landing last would put a sentence about the previous key or region on the
+   * line. Every probe takes a number and only the newest may write.
+   */
+  let asked = 0;
+
+  /** What went wrong, in the one sentence this panel has for it. */
+  const why = (error: unknown): string =>
+    words.failed(error instanceof Error ? error.message : String(error));
+
   /* A draw is a new key or a new region, and neither is a keystroke. Everything
      that has to be true "on every draw" is here, in one place, so that the
      three consequences in the header cannot come apart: the field is emptied,
@@ -276,6 +292,8 @@
     const at = `${hasKey}\u0000${region ?? ''}`;
     if (drawn === at) return;
     drawn = at;
+    // A new draw supersedes whatever the last one asked, answered or not.
+    const mine = ++asked;
     typed = '';
     where = region ?? DEFAULT_REGION;
     if (!hasKey) {
@@ -286,8 +304,17 @@
     const ask = probe;
     void (async () => {
       line = words.asking;
-      const answer = await ask({ key: await stored?.(), region: region ?? DEFAULT_REGION });
-      if (!dead) line = sentence(answer);
+      /* A probe that throws instead of answering — a product's own fetch
+         failing in a way its mapping did not foresee, a `stored` thunk whose
+         database is gone — used to leave `words.asking` on the line for good,
+         with the rejection escaping unhandled. It says what happened instead. */
+      let said: string;
+      try {
+        said = sentence(await ask({ key: await stored?.(), region: region ?? DEFAULT_REGION }));
+      } catch (error) {
+        said = why(error);
+      }
+      if (!dead && mine === asked) line = said;
     })();
   });
 
@@ -319,6 +346,9 @@
       return;
     }
     const at = where.trim() || DEFAULT_REGION;
+    // This save's probe is the newest question, so an arrival probe still out
+    // must not overwrite what it answers.
+    ++asked;
     checking = true;
     try {
       // Nothing to probe with where the key is not this page's to read; that
@@ -336,15 +366,25 @@
         announce?.(words.saved(answer.count));
       }
     } catch (error) {
-      say(words.failed(error instanceof Error ? error.message : String(error)));
+      say(why(error));
     } finally {
       checking = false;
     }
   }
 
+  /* The product's own removal, which can fail — a database write refused, a
+     machine the editor talks to gone away — and which used to reject into
+     nothing: the press did nothing visible and the key stayed. It is said
+     where every other failure in this panel is said: `failed` carries the
+     product's own message, which is what it exists for. */
   async function drop(): Promise<void> {
-    await forget();
-    line = '';
+    ++asked;
+    try {
+      await forget();
+      line = '';
+    } catch (error) {
+      say(why(error));
+    }
   }
 </script>
 

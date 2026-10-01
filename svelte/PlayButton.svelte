@@ -83,6 +83,13 @@
     try {
       const why = await hear(said);
       if (why) trouble(why);
+    } catch (error) {
+      /* `hear` is meant to answer with a reason rather than throw one, and a
+         product's speech path throws anyway — a network gone, a model that
+         would not load. That used to escape as an unhandled rejection and say
+         nothing beside the field, which is the one place this button promises
+         to say it. A thrown reason is still a reason. */
+      trouble(error instanceof Error ? error.message : String(error));
     } finally {
       busy = false;
     }

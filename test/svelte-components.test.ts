@@ -432,6 +432,48 @@ describe('the Azure panel', () => {
     done();
   });
 
+  it('says what went wrong when the probe throws, instead of asking forever', async () => {
+    const probe = vi.fn(async () => { throw new Error('Netz weg'); });
+    const { root, done } = panel({ hasKey: true, stored: () => 'k', probe });
+    await settle();
+    expect(root.querySelector('#azureprobe')!.textContent)
+      .toBe('Azure hat nicht geantwortet (Netz weg).');
+    done();
+  });
+
+  it('lets only the newest probe write the line', async () => {
+    /* The arrival probe for the stored key is slow; a save probes the typed one
+       and is answered first. The older answer, landing last, used to replace
+       the save's sentence with one about a key that is no longer there. */
+    let late: (answer: unknown) => void = () => {};
+    const probe = vi.fn()
+      .mockImplementationOnce(() => new Promise((resolve) => { late = resolve; }))
+      .mockImplementationOnce(async () => ({ ok: true as const, count: 7 }));
+    const { root, done } = panel({ hasKey: true, stored: () => 'alt', probe });
+    await settle();
+    const field = root.querySelector<HTMLInputElement>('#azurekey')!;
+    field.value = 'neu';
+    field.dispatchEvent(new Event('input'));
+    await tick();
+    root.querySelector<HTMLButtonElement>('#azuresave')!.click();
+    await settle();
+    expect(root.querySelector('#azureprobe')!.textContent).toBe('7 Stimmen verfügbar');
+    late({ ok: false, code: 'refused', words: '401' });
+    await settle();
+    expect(root.querySelector('#azureprobe')!.textContent).toBe('7 Stimmen verfügbar');
+    done();
+  });
+
+  it('says so when removing the key fails, rather than rejecting into nothing', async () => {
+    const forget = vi.fn(async () => { throw new Error('Datenbank gesperrt'); });
+    const { root, done } = panel({ hasKey: true, forget });
+    root.querySelector<HTMLButtonElement>('#azureforget')!.click();
+    await settle();
+    expect(root.querySelector('#azureprobe')!.textContent)
+      .toBe('Azure hat nicht geantwortet (Datenbank gesperrt).');
+    done();
+  });
+
   it('removes the key through its own button', async () => {
     const forget = vi.fn();
     const { root, done } = panel({ hasKey: true, forget });
@@ -488,6 +530,17 @@ describe('the play button', () => {
     await tick();
     expect(hear).not.toHaveBeenCalled();
     expect(trouble).toHaveBeenLastCalledWith('Erst einen Namen eintippen.');
+    done();
+  });
+
+  it('hands on a reason that was thrown rather than answered', async () => {
+    // It used to escape as an unhandled rejection and say nothing at all.
+    const trouble = vi.fn();
+    const { root, done } = press({ trouble, hear: async () => { throw new Error('Netz weg'); } });
+    (root as HTMLButtonElement).click();
+    await settle();
+    expect(trouble.mock.calls.map((c) => c[0])).toEqual(['', 'Netz weg']);
+    expect((root as HTMLButtonElement).disabled).toBe(false);
     done();
   });
 
