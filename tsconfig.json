@@ -13,7 +13,11 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "noEmit": true
+    "noEmit": true,
+    // Named rather than inherited: TypeScript 6 includes no @types package
+    // unless asked, and vitest 5's types stopped bringing Node's in with them.
+    // src/vite.ts and the tests read node:fs and node:path.
+    "types": ["node"]
   },
   "include": ["src", "test"]
 }
