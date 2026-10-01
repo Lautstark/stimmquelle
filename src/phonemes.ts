@@ -65,7 +65,11 @@ export interface Remapped {
   readonly ids: number[];
   /** Phonemes this model has no symbol for, in any form. Normally empty. */
   readonly dropped: string[];
-  /** True when nothing had to be composed — the model agrees with the phonemizer. */
+  /**
+   * True when nothing was dropped — every phoneme the phonemizer emitted is in
+   * this model's table. Until 2.7.0 it meant "nothing had to be composed"; the
+   * composition is gone, so `false` now means exactly `dropped.length > 0`.
+   */
   readonly exact: boolean;
 }
 
@@ -90,9 +94,9 @@ export function remapPhonemeIds(
 
   for (const id of phonemeIds) {
     if (structural.has(id)) {
-      // A composed pair took two slots and now takes one, so the pad that
-      // separated them goes with it: piper puts exactly one between phonemes,
-      // and two would be a token the model was never trained to see there.
+      // A dropped phoneme took a slot and now takes none, so the pad that
+      // followed it goes with it: piper puts exactly one pad between phonemes,
+      // and two in a row would be a sequence the model was never trained on.
       if (dropPad && id === pad) { dropPad = false; continue; }
       out.push(id);
       continue;

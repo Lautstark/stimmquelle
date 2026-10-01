@@ -287,7 +287,7 @@ export interface SynthesizeOptions extends Offering {
 export interface Synthesised {
   readonly samples: Float32Array;
   readonly rate: number;
-  /** True when the model's table agreed with the phonemizer and nothing was composed. */
+  /** True when the model's table held every phoneme and nothing was dropped. See `Remapped`. */
   readonly exact: boolean;
   readonly dropped: string[];
 }
