@@ -177,6 +177,9 @@
     /** Drawn and disabled rather than removed, so the row keeps its shape and
      *  the act stays visible as one that exists and cannot run right now. */
     canHear: boolean;
+    /** The chosen voice that is not in the catalogue any more. Drawn after
+     *  every match and never one itself — see `matched`. */
+    gone: boolean;
   }
 
   const rows: Drawn[] = $derived.by(() => {
@@ -201,6 +204,7 @@
         ...(notes?.(voice) ?? []),
       ],
       canHear: true,
+      gone: false,
     }));
 
     /* A voice can be chosen and not be here: a key withdrawn, a model deleted,
@@ -216,11 +220,20 @@
       };
       drawn.push({
         voice: absent, live: true, name: absent.name, facts: say.gone, notes: [],
-        canHear: false,
+        canHear: false, gone: true,
       });
     }
     return drawn;
   });
+
+  /* Whether the search found anything, which is not the same as whether a row
+     is drawn. The chosen voice that has gone is drawn whatever was typed, so
+     it is not an answer to the search: with nothing matching, the list says
+     `noMatch` *and* still shows the choice beneath it. This used to be the
+     `{:else}` of the rows alone, so a search that found nothing said nothing
+     whenever a gone choice was on screen — and the one row left read as the
+     match. The vanilla twin had it right; this now emits the same. */
+  const matched = $derived(rows.some((row) => !row.gone));
 
   /* The one row the Tab key can land on. The answer where the answer is drawn,
      and otherwise the first row: a group the keyboard cannot enter at all is
@@ -322,7 +335,9 @@
        node. -->
   <div class="voices" role="radiogroup" aria-label={say.group}
     bind:this={list} onkeydown={step}
-    >{#each rows as row (row.voice.id)}<div class="voices__row"
+    >{#each rows as row (row.voice.id)}{#if row.gone && !matched}<p class="voices__none"
+          >{say.noMatch}</p
+        >{/if}<div class="voices__row"
         >{#if hear}<button class="btn quiet voices__play" type="button"
             title={say.hearTitle}
             aria-label={hearing.has(row.voice.id) ? say.hearing(row.name) : say.hear(row.name)}

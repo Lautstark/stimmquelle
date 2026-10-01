@@ -469,6 +469,10 @@ export function voicePicker(options: VoicePickerOptions): VoicePicker {
       true,
     ));
 
+    // Counted before the gone choice below is added, on purpose: that row is
+    // drawn whatever was typed, so it is not an answer to the search, and a
+    // search that found nothing says so even with it on screen. The Svelte
+    // twin emits the same.
     if (!rows.length) rows.push(make('p', 'voices__none', say.noMatch));
 
     /* A voice can be chosen and not be here: a key withdrawn, a model deleted,

@@ -94,16 +94,25 @@ function sameShape(root: Element): string[] {
 }
 
 describe('the Svelte picker emits what the vanilla one emits', () => {
-  const both = (options: Record<string, unknown>, live: string | undefined) => {
+  const both = (options: Record<string, unknown>, live: string | undefined, typed = '') => {
+    const search = (root: HTMLElement): void => {
+      if (!typed) return;
+      const field = root.querySelector<HTMLInputElement>('input.field')!;
+      field.value = typed;
+      field.dispatchEvent(new Event('input'));
+      flushSync();
+    };
     const picker = voicePicker({
       voices: () => VOICES, current: () => live, pick: () => {}, ...options,
     } as never);
     document.body.replaceChildren(picker.node);
+    search(picker.node);
     const vanilla = sameShape(picker.node);
     picker.dispose();
     const { root, done } = draw(VoicePicker, {
       voices: () => VOICES, current: () => live, pick: () => {}, ...options,
     });
+    search(root);
     const svelte = sameShape(root);
     done();
     return { vanilla, svelte };
@@ -126,6 +135,21 @@ describe('the Svelte picker emits what the vanilla one emits', () => {
     const { vanilla, svelte } = both(
       { hear: async () => {}, chosenName: () => 'Gisela' }, 'azure:de-DE-GoneNeural',
     );
+    expect(svelte).toEqual(vanilla);
+  });
+  /* The gone choice is drawn whatever was typed, so it is not an answer to the
+     search. The Svelte twin used to let it stand in for one and dropped the
+     `noMatch` line; the vanilla one said both. */
+  it('with a search that matches nothing, beside a chosen voice that has gone', () => {
+    const { vanilla, svelte } = both(
+      { hear: async () => {}, chosenName: () => 'Gisela' }, 'azure:de-DE-GoneNeural', 'niemand',
+    );
+    expect(vanilla.filter((line) => line.includes('voices__none'))).toHaveLength(1);
+    expect(svelte).toEqual(vanilla);
+  });
+
+  it('with a search that matches nothing and nothing chosen', () => {
+    const { vanilla, svelte } = both({}, undefined, 'niemand');
     expect(svelte).toEqual(vanilla);
   });
 });
