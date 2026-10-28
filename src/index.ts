@@ -41,6 +41,6 @@ export {
   type AzureOptions, type PiperModule, type Progress, type SpeakOptions, type Spoken,
 } from './speak.js';
 export {
-  keyFor, remember,
+  cacheStore, keyFor, remember,
   type KeyOptions, type Remembered, type SpokenStore,
 } from './key.js';

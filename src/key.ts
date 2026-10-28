@@ -165,7 +165,8 @@ export interface Remembered {
  * vorlaut's would be a cache, shared between sentences and evictable at any
  * moment — so a package that owned the storage would have to make one of them
  * wrong. What it owns instead is the name, which is the part they must agree on
- * and the part they both got wrong alone.
+ * and the part they both got wrong alone. A product that wants the cache kind
+ * need not write it: `cacheStore()` below is that one, ready-made.
  *
  * A failing `put` is not caught. A store that may be full should decide inside
  * its own `put` whether that is fatal, because it is the only side that knows
@@ -184,3 +185,89 @@ export async function remember(
   await store.put(key, spoken.wav);
   return { wav: spoken.wav, key, cached: false, spoken };
 }
+
+/**
+ * A `SpokenStore` that is a cache: its own IndexedDB database, one object store,
+ * the WAVs under their §3 names, and the browser free to clear it.
+ *
+ * The vorlaut kind of store from `remember()`'s note, ready-made, because it
+ * is the kind every product wanting one wrote the same way: bildhaft's Anybook
+ * recordings had it word for word. mitreden's library is the other kind and
+ * stays its own — a recording owned by a sentence, deleted with it and carried
+ * in a Sicherung is not something a browser may throw away.
+ *
+ * **`name` is the database, and it is the product's.** One per product
+ * (`bildhaft-stimme`), never one shared across the family: §3 lets each product
+ * truncate the name its own way, and a database apart from the product's
+ * material needs no version of that one and cannot touch it when cleared. The
+ * layout — version 1, one store called `wav`, the bytes as a `Uint8Array` — is
+ * exactly bildhaft's, so its recordings carry over without a migration.
+ *
+ * **Nothing here fails.** A refused IndexedDB (a private window, a browser with
+ * site data off, node), a full disk, a database of that name shaped otherwise:
+ * each answers `get` with `undefined` and lets `put` resolve, which to
+ * `remember()` means speaking again next time. That is the decision its note
+ * asks a store to make inside `put`, and for a cache it is always the same
+ * one — every byte in it can be made again.
+ *
+ * Opened on first use, not when called, so a module may build its store at
+ * load time and still be imported where there is no IndexedDB at all.
+ */
+export function cacheStore(name: string): SpokenStore {
+  let opening: Promise<IDBDatabase | null> | null = null;
+
+  const open = (): Promise<IDBDatabase | null> => (opening ??= new Promise((resolve) => {
+    try {
+      const request = globalThis.indexedDB.open(name, 1);
+      request.onupgradeneeded = () => { request.result.createObjectStore(WAVS); };
+      request.onsuccess = () => {
+        const db = request.result;
+        /* Another tab deleting or upgrading the database waits for every open
+           connection to close. Close, and open afresh on the next call. */
+        db.onversionchange = () => { db.close(); opening = null; };
+        db.onclose = () => { opening = null; };
+        resolve(db);
+      };
+      request.onerror = () => resolve(null);
+      request.onblocked = () => resolve(null);
+    } catch {
+      resolve(null);   // no indexedDB at all, or one that throws on open
+    }
+  }));
+
+  /** One request in its own transaction; `undefined` for anything but success. */
+  const run = async <T>(mode: IDBTransactionMode, act: (store: IDBObjectStore) => IDBRequest<T>):
+      Promise<T | undefined> => {
+    const db = await open();
+    if (!db) return undefined;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(WAVS, mode);
+        const request = act(tx.objectStore(WAVS));
+        /* Resolved on `complete` rather than on the request's success, so a put
+           has landed by the time it resolves; a quota failure arrives as an
+           abort, after the request itself has succeeded. */
+        tx.oncomplete = () => resolve(request.result);
+        tx.onabort = () => resolve(undefined);
+        tx.onerror = () => resolve(undefined);
+      } catch {
+        resolve(undefined);   // no `wav` store in a database of that name, or closed
+      }
+    });
+  };
+
+  return {
+    async get(key) {
+      const held = await run('readonly', (store) => store.get(key));
+      return held instanceof Uint8Array ? held : undefined;
+    },
+    async put(key, wav) {
+      /* A copy, not the view as handed over: IndexedDB keeps a view's whole
+         buffer, so a WAV that is a window onto something larger would carry
+         the rest of it into the database. */
+      await run('readwrite', (store) => store.put(wav.slice(), key));
+    },
+  };
+}
+
+const WAVS = 'wav';

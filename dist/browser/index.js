@@ -1310,6 +1310,57 @@ async function remember(store, text, vid, options = {}) {
   await store.put(key, spoken.wav);
   return { wav: spoken.wav, key, cached: false, spoken };
 }
+function cacheStore(name) {
+  let opening = null;
+  const open = () => opening ??= new Promise((resolve) => {
+    try {
+      const request = globalThis.indexedDB.open(name, 1);
+      request.onupgradeneeded = () => {
+        request.result.createObjectStore(WAVS);
+      };
+      request.onsuccess = () => {
+        const db = request.result;
+        db.onversionchange = () => {
+          db.close();
+          opening = null;
+        };
+        db.onclose = () => {
+          opening = null;
+        };
+        resolve(db);
+      };
+      request.onerror = () => resolve(null);
+      request.onblocked = () => resolve(null);
+    } catch {
+      resolve(null);
+    }
+  });
+  const run = async (mode, act) => {
+    const db = await open();
+    if (!db) return void 0;
+    return new Promise((resolve) => {
+      try {
+        const tx = db.transaction(WAVS, mode);
+        const request = act(tx.objectStore(WAVS));
+        tx.oncomplete = () => resolve(request.result);
+        tx.onabort = () => resolve(void 0);
+        tx.onerror = () => resolve(void 0);
+      } catch {
+        resolve(void 0);
+      }
+    });
+  };
+  return {
+    async get(key) {
+      const held = await run("readonly", (store) => store.get(key));
+      return held instanceof Uint8Array ? held : void 0;
+    },
+    async put(key, wav) {
+      await run("readwrite", (store) => store.put(wav.slice(), key));
+    }
+  };
+}
+var WAVS = "wav";
 export {
   AZURE_FORMAT,
   AZURE_RATE,
@@ -1329,6 +1380,7 @@ export {
   azureVoices,
   buildSsml,
   byId,
+  cacheStore,
   decodeWav,
   displayName,
   downloaded,

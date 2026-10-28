@@ -232,7 +232,11 @@ because the length above is a per-product choice. `remember(store, …)` is the
 same name with a lookup around it, taking a `{ get, put }` the consumer owns —
 the storage stays outside, because a library owned by a sentence and a cache
 shared between them are different lifetimes for the same bytes, and a package
-that owned it would have to make one consumer wrong.
+that owned it would have to make one consumer wrong. What the package does
+offer, since the release after 2.12.2, is the cache kind ready-made:
+`cacheStore(dbName)` is an IndexedDB database of the product's own, one store,
+§3 names as keys, and every failure read as "not kept". The library kind stays
+the product's to write.
 
 **This section was implemented twice by hand first, and each copy got a
 different clause wrong.** Both were latent — neither consumer had a cache for
