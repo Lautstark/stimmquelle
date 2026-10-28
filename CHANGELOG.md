@@ -1,3 +1,10 @@
+## [2.13.0](https://github.com/Lautstark/stimmquelle/compare/v2.12.2...v2.13.0) (2026-10-28)
+
+### Features
+
+* **key:** a byte budget and clear() for cacheStore ([3af18fe](https://github.com/Lautstark/stimmquelle/commit/3af18fee420a3d12d2e1ebe3c52f43d0a4bed6f5))
+* **key:** a ready-made cache store for remember() ([019ae1d](https://github.com/Lautstark/stimmquelle/commit/019ae1d5c816430d0daf2aca07b2892802b0ee48))
+
 ## [2.12.2](https://github.com/Lautstark/stimmquelle/compare/v2.12.1...v2.12.2) (2026-10-01)
 
 ### Bug Fixes
