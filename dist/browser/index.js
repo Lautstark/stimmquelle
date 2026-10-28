@@ -849,8 +849,8 @@ async function cached(name, url, o = {}) {
     const parts = [];
     let loaded = 0;
     for (; ; ) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      const { done: done2, value } = await reader.read();
+      if (done2) break;
       parts.push(value);
       loaded += value.length;
       o.onProgress(loaded / total);
@@ -1148,13 +1148,13 @@ function loadSystemVoices(timeoutMs = 1e3) {
   const now = systemVoices();
   if (now.length) return Promise.resolve(now);
   return new Promise((resolve) => {
-    const done = () => {
+    const done2 = () => {
       clearTimeout(timer);
-      s.removeEventListener("voiceschanged", done);
+      s.removeEventListener("voiceschanged", done2);
       resolve(systemVoices());
     };
-    const timer = setTimeout(done, timeoutMs);
-    s.addEventListener("voiceschanged", done);
+    const timer = setTimeout(done2, timeoutMs);
+    s.addEventListener("voiceschanged", done2);
   });
 }
 function say(text, vid, o = {}) {
@@ -1310,14 +1310,13 @@ async function remember(store, text, vid, options = {}) {
   await store.put(key, spoken.wav);
   return { wav: spoken.wav, key, cached: false, spoken };
 }
-function cacheStore(name) {
+function cacheStore(name, options = {}) {
+  const { budget } = options;
   let opening = null;
   const open = () => opening ??= new Promise((resolve) => {
     try {
-      const request = globalThis.indexedDB.open(name, 1);
-      request.onupgradeneeded = () => {
-        request.result.createObjectStore(WAVS);
-      };
+      const request = globalThis.indexedDB.open(name, LAYOUT);
+      request.onupgradeneeded = () => upgrade(request.result, request.transaction);
       request.onsuccess = () => {
         const db = request.result;
         db.onversionchange = () => {
@@ -1340,9 +1339,20 @@ function cacheStore(name) {
     if (!db) return void 0;
     return new Promise((resolve) => {
       try {
-        const tx = db.transaction(WAVS, mode);
-        const request = act(tx.objectStore(WAVS));
-        tx.oncomplete = () => resolve(request.result);
+        const tx = db.transaction([WAVS, USE], mode);
+        let result;
+        act(tx.objectStore(WAVS), tx.objectStore(USE)).then(
+          (r) => {
+            result = r;
+          },
+          () => {
+            try {
+              tx.abort();
+            } catch {
+            }
+          }
+        );
+        tx.oncomplete = () => resolve(result);
         tx.onabort = () => resolve(void 0);
         tx.onerror = () => resolve(void 0);
       } catch {
@@ -1352,15 +1362,70 @@ function cacheStore(name) {
   };
   return {
     async get(key) {
-      const held = await run("readonly", (store) => store.get(key));
-      return held instanceof Uint8Array ? held : void 0;
+      return run("readwrite", async (wavs, use) => {
+        const held = await done(wavs.get(key));
+        if (!(held instanceof Uint8Array)) return void 0;
+        use.put({ usedAt: stamp(), size: held.byteLength }, key);
+        return held;
+      });
     },
     async put(key, wav) {
-      await run("readwrite", (store) => store.put(wav.slice(), key));
+      await run("readwrite", async (wavs, use) => {
+        wavs.put(wav.slice(), key);
+        use.put({ usedAt: stamp(), size: wav.byteLength }, key);
+        if (budget === void 0) return;
+        const [keys, uses] = await Promise.all([
+          done(use.getAllKeys()),
+          done(use.getAll())
+        ]);
+        const usage = keys.map((k, i) => ({ key: String(k), ...uses[i] })).sort((a, b) => a.usedAt - b.usedAt);
+        for (const going of evictable(usage, budget, key)) {
+          wavs.delete(going);
+          use.delete(going);
+        }
+      });
+    },
+    async clear() {
+      await run("readwrite", async (wavs, use) => {
+        wavs.clear();
+        use.clear();
+      });
     }
   };
 }
+function evictable(usage, budget, keep) {
+  let total = usage.reduce((sum, one) => sum + one.size, 0);
+  const going = [];
+  for (const one of usage) {
+    if (total <= budget) break;
+    if (one.key === keep) continue;
+    going.push(one.key);
+    total -= one.size;
+  }
+  return going;
+}
+function upgrade(db, tx) {
+  if (!db.objectStoreNames.contains(WAVS)) db.createObjectStore(WAVS);
+  if (db.objectStoreNames.contains(USE)) return;
+  const use = db.createObjectStore(USE);
+  const walk = tx.objectStore(WAVS).openCursor();
+  walk.onsuccess = () => {
+    const at = walk.result;
+    if (!at) return;
+    const size = at.value instanceof Uint8Array ? at.value.byteLength : 0;
+    use.put({ usedAt: 0, size }, at.primaryKey);
+    at.continue();
+  };
+}
+var done = (request) => new Promise((resolve, reject) => {
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(request.error);
+});
+var handedOut = 0;
+var stamp = () => handedOut = Math.max(Date.now(), handedOut + 1);
+var LAYOUT = 2;
 var WAVS = "wav";
+var USE = "use";
 export {
   AZURE_FORMAT,
   AZURE_RATE,

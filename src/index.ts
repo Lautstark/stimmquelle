@@ -42,5 +42,5 @@ export {
 } from './speak.js';
 export {
   cacheStore, keyFor, remember,
-  type KeyOptions, type Remembered, type SpokenStore,
+  type CacheOptions, type CacheStore, type KeyOptions, type Remembered, type SpokenStore,
 } from './key.js';

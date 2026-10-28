@@ -187,39 +187,47 @@ export async function remember(
 }
 
 /**
- * A `SpokenStore` that is a cache: its own IndexedDB database, one object store,
- * the WAVs under their §3 names, and the browser free to clear it.
+ * A `SpokenStore` that is a cache: its own IndexedDB database, the WAVs under
+ * their §3 names, the browser free to clear it, and optionally a byte budget
+ * past which the least recently used are forgotten.
  *
  * The vorlaut kind of store from `remember()`'s note, ready-made, because it
  * is the kind every product wanting one wrote the same way: bildhaft's Anybook
- * recordings had it word for word. mitreden's library is the other kind and
- * stays its own — a recording owned by a sentence, deleted with it and carried
- * in a Sicherung is not something a browser may throw away.
+ * recordings had it word for word, and vorlaut-editor's `speech` store is the
+ * same thing with the budget. mitreden's library is the other kind and stays
+ * its own — a recording owned by a sentence, deleted with it and carried in a
+ * Sicherung is not something a browser may throw away.
  *
  * **`name` is the database, and it is the product's.** One per product
  * (`bildhaft-stimme`), never one shared across the family: §3 lets each product
  * truncate the name its own way, and a database apart from the product's
- * material needs no version of that one and cannot touch it when cleared. The
- * layout — version 1, one store called `wav`, the bytes as a `Uint8Array` — is
- * exactly bildhaft's, so its recordings carry over without a migration.
+ * material needs no version of that one and cannot touch it when cleared.
+ *
+ * **The layout is bildhaft's, grown by one store.** `wav` holds the bytes as a
+ * `Uint8Array` exactly as bildhaft's version 1 did; version 2 adds `use`, one
+ * small `{ usedAt, size }` per recording, so that the eviction walk reads
+ * numbers and never deserialises audio. The upgrade from 1 writes a `use` for
+ * every recording already there, stamped oldest, so nothing is lost and a
+ * budget sees all of it.
  *
  * **Nothing here fails.** A refused IndexedDB (a private window, a browser with
  * site data off, node), a full disk, a database of that name shaped otherwise:
- * each answers `get` with `undefined` and lets `put` resolve, which to
- * `remember()` means speaking again next time. That is the decision its note
- * asks a store to make inside `put`, and for a cache it is always the same
- * one — every byte in it can be made again.
+ * each answers `get` with `undefined` and lets `put` and `clear` resolve, which
+ * to `remember()` means speaking again next time. That is the decision its
+ * note asks a store to make inside `put`, and for a cache it is always the
+ * same one — every byte in it can be made again.
  *
  * Opened on first use, not when called, so a module may build its store at
  * load time and still be imported where there is no IndexedDB at all.
  */
-export function cacheStore(name: string): SpokenStore {
+export function cacheStore(name: string, options: CacheOptions = {}): CacheStore {
+  const { budget } = options;
   let opening: Promise<IDBDatabase | null> | null = null;
 
   const open = (): Promise<IDBDatabase | null> => (opening ??= new Promise((resolve) => {
     try {
-      const request = globalThis.indexedDB.open(name, 1);
-      request.onupgradeneeded = () => { request.result.createObjectStore(WAVS); };
+      const request = globalThis.indexedDB.open(name, LAYOUT);
+      request.onupgradeneeded = () => upgrade(request.result, request.transaction!);
       request.onsuccess = () => {
         const db = request.result;
         /* Another tab deleting or upgrading the database waits for every open
@@ -235,39 +243,135 @@ export function cacheStore(name: string): SpokenStore {
     }
   }));
 
-  /** One request in its own transaction; `undefined` for anything but success. */
-  const run = async <T>(mode: IDBTransactionMode, act: (store: IDBObjectStore) => IDBRequest<T>):
+  /** One transaction over both stores; `undefined` for anything but a commit. */
+  const run = async <T>(mode: IDBTransactionMode,
+                        act: (wavs: IDBObjectStore, use: IDBObjectStore) => Promise<T>):
       Promise<T | undefined> => {
     const db = await open();
     if (!db) return undefined;
     return new Promise((resolve) => {
       try {
-        const tx = db.transaction(WAVS, mode);
-        const request = act(tx.objectStore(WAVS));
-        /* Resolved on `complete` rather than on the request's success, so a put
+        const tx = db.transaction([WAVS, USE], mode);
+        let result: T | undefined;
+        act(tx.objectStore(WAVS), tx.objectStore(USE)).then(
+          (r) => { result = r; },
+          () => { try { tx.abort(); } catch { /* already over */ } });
+        /* Resolved on `complete` rather than on a request's success, so a put
            has landed by the time it resolves; a quota failure arrives as an
            abort, after the request itself has succeeded. */
-        tx.oncomplete = () => resolve(request.result);
+        tx.oncomplete = () => resolve(result);
         tx.onabort = () => resolve(undefined);
         tx.onerror = () => resolve(undefined);
       } catch {
-        resolve(undefined);   // no `wav` store in a database of that name, or closed
+        resolve(undefined);   // a database of that name without our stores, or closed
       }
     });
   };
 
   return {
     async get(key) {
-      const held = await run('readonly', (store) => store.get(key));
-      return held instanceof Uint8Array ? held : undefined;
+      return run('readwrite', async (wavs, use) => {
+        const held: unknown = await done(wavs.get(key));
+        if (!(held instanceof Uint8Array)) return undefined;
+        /* Stamped on the way out, which makes the eviction least recently
+           *used* rather than written: the Sammlung somebody is working on
+           stays, however old it is. A write per hit, which is the price. */
+        use.put({ usedAt: stamp(), size: held.byteLength } satisfies Use, key);
+        return held;
+      });
     },
     async put(key, wav) {
-      /* A copy, not the view as handed over: IndexedDB keeps a view's whole
-         buffer, so a WAV that is a window onto something larger would carry
-         the rest of it into the database. */
-      await run('readwrite', (store) => store.put(wav.slice(), key));
+      await run('readwrite', async (wavs, use) => {
+        /* A copy, not the view as handed over: IndexedDB keeps a view's whole
+           buffer, so a WAV that is a window onto something larger would carry
+           the rest of it into the database. */
+        wavs.put(wav.slice(), key);
+        use.put({ usedAt: stamp(), size: wav.byteLength } satisfies Use, key);
+        if (budget === undefined) return;
+
+        const [keys, uses] = await Promise.all([
+          done(use.getAllKeys()), done(use.getAll() as IDBRequest<Use[]>)]);
+        const usage = keys.map((k, i) => ({ key: String(k), ...uses[i]! }))
+          .sort((a, b) => a.usedAt - b.usedAt);
+        for (const going of evictable(usage, budget, key)) {
+          wavs.delete(going);
+          use.delete(going);
+        }
+      });
+    },
+    async clear() {
+      await run('readwrite', async (wavs, use) => { wavs.clear(); use.clear(); });
     },
   };
 }
 
+export interface CacheOptions {
+  /**
+   * How many bytes of audio to keep before forgetting the least recently used.
+   * Absent, nothing is forgotten but what the browser itself clears.
+   *
+   * A target rather than a ceiling, as vorlaut-editor's was: the recording just
+   * written is never the one dropped — a cache that evicts what it has just
+   * paid a synthesis for is not one — so a single recording longer than the
+   * whole budget leaves the store over until the next write.
+   */
+  budget?: number;
+}
+
+export interface CacheStore extends SpokenStore {
+  /** Forget every recording, for a product's "delete everything". */
+  clear(): Promise<void>;
+}
+
+/** Which recordings to forget, oldest use first, to get back under `budget`. */
+function evictable(usage: readonly { key: string; size: number }[],
+                   budget: number, keep: string): string[] {
+  let total = usage.reduce((sum, one) => sum + one.size, 0);
+  const going: string[] = [];
+  for (const one of usage) {
+    if (total <= budget) break;
+    if (one.key === keep) continue;
+    going.push(one.key);
+    total -= one.size;
+  }
+  return going;
+}
+
+/** Version 1 is bildhaft's `wav` alone; 2 adds `use` and fills it. */
+function upgrade(db: IDBDatabase, tx: IDBTransaction): void {
+  if (!db.objectStoreNames.contains(WAVS)) db.createObjectStore(WAVS);
+  if (db.objectStoreNames.contains(USE)) return;
+  const use = db.createObjectStore(USE);
+  /* What version 1 kept, at usedAt 0: oldest of all, so a budget forgets it
+     first, but counted at its real size so the budget is not fooled. Read once,
+     here, which is the one time the audio is walked. */
+  const walk = tx.objectStore(WAVS).openCursor();
+  walk.onsuccess = () => {
+    const at = walk.result;
+    if (!at) return;
+    const size = at.value instanceof Uint8Array ? at.value.byteLength : 0;
+    use.put({ usedAt: 0, size } satisfies Use, at.primaryKey);
+    at.continue();
+  };
+}
+
+/** A request as a promise. Awaited inside the transaction, which stays open. */
+const done = <T>(request: IDBRequest<T>): Promise<T> => new Promise((resolve, reject) => {
+  request.onsuccess = () => resolve(request.result);
+  request.onerror = () => reject(request.error);
+});
+
+/**
+ * The next `usedAt`, and never one handed out before. Wall clock, pushed on a
+ * millisecond where it would repeat: an export writes several recordings inside
+ * one millisecond, and a tie would leave their order to the key, which is a
+ * hash — least recently used has to mean it.
+ */
+let handedOut = 0;
+const stamp = (): number => (handedOut = Math.max(Date.now(), handedOut + 1));
+
+interface Use { usedAt: number; size: number }
+
+const LAYOUT = 2;
 const WAVS = 'wav';
+const USE = 'use';

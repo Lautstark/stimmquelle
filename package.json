@@ -80,6 +80,7 @@
     "@types/node": "^24.19.0",
     "conventional-changelog-conventionalcommits": "^9.3.1",
     "esbuild": "^0.25.0",
+    "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.0.1",
     "semantic-release": "^25.0.9",
     "svelte": "^5.57.0",
