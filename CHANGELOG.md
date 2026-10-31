@@ -1,3 +1,9 @@
+## [2.14.0](https://github.com/Lautstark/stimmquelle/compare/v2.13.0...v2.14.0) (2026-10-31)
+
+### Features
+
+* **svelte:** AzureConnection — Azure as a connection that is there or not, key and region together ([5328990](https://github.com/Lautstark/stimmquelle/commit/5328990604e31441abb457aea87aa85cf780477e))
+
 ## [2.13.0](https://github.com/Lautstark/stimmquelle/compare/v2.12.2...v2.13.0) (2026-10-28)
 
 ### Features
