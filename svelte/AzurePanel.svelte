@@ -65,6 +65,8 @@
     /** Under the region field. Where to find it in the Azure portal, usually. */
     regionHint?: string;
     save: string;
+    /** The cancel button's label, where the host passes `cancel`. */
+    cancel?: string;
     /** On the save button while the probe is out. A button that does nothing
      *  visible for two seconds is a button somebody presses again. */
     saving: string;
@@ -170,6 +172,7 @@
     probe,
     save,
     forget,
+    cancel,
     words,
     warning,
     announce,
@@ -221,6 +224,12 @@
     save: (next: AzureAccess) => void | Promise<void>;
     /** Drop the stored key. Its own act, and the only one that can mean it. */
     forget: () => void | Promise<void>;
+    /**
+     * Put the form away without saving. Drawn as a quiet button beside the
+     * save, labelled `words.cancel`, only where it is passed: a panel that is
+     * always open has nothing to go back to. `AzureConnection` passes it.
+     */
+    cancel?: () => void;
     words: AzureWords;
     /**
      * Anything else this product has to say beside the fields, drawn between
@@ -411,6 +420,7 @@
   <div class="acts">
     <button id={saveId} class="btn primary" type="button" disabled={checking}
       onclick={() => void keep()}>{checking ? words.saving : words.save}</button>
+    {#if cancel}<button class="btn quiet" type="button" onclick={cancel}>{words.cancel}</button>{/if}
     <!-- §6.8: blocked is drawn, not removed. `hidden` rather than an `{#if}`,
          so the row keeps its shape and nothing moves under the pointer when a
          key arrives or goes. -->

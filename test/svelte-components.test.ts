@@ -29,6 +29,7 @@ import { flushSync, mount as render, tick, unmount, type Component } from 'svelt
 import { describe, expect, it, vi } from 'vitest';
 import { voicePicker, type Pickable } from '../dist/voice-picker.js';
 import AzurePanel from '../svelte/AzurePanel.svelte';
+import AzureConnection from '../svelte/AzureConnection.svelte';
 import PlayButton from '../svelte/PlayButton.svelte';
 import VoicePicker from '../svelte/VoicePicker.svelte';
 
@@ -630,5 +631,88 @@ describe('a shipped component imports what a consumer imports', () => {
       expect(sibling || specifier.startsWith('../dist/')).toBe(true);
       expect(existsSync(resolve(root, 'svelte', specifier))).toBe(true);
     }
+  });
+});
+
+describe('the Azure connection', () => {
+  const CONNECTION = {
+    ...WORDS,
+    cancel: 'Abbrechen',
+    title: 'Stimmen von Microsoft Azure',
+    off: 'nicht verbunden', on: 'verbunden', refusedState: 'abgelehnt',
+    offNote: 'Mehr Stimmen, die natürlicher klingen.',
+    onNote: (hint: string, region: string) => `Schlüssel ••••${hint} · Region ${region}`,
+    refusedNote: 'Azure nimmt den Schlüssel nicht mehr an.',
+    connect: 'Verbinden …', change: 'Ändern …', check: 'Schlüssel und Region prüfen …',
+  };
+  const connection = (props: Record<string, unknown>) => draw(AzureConnection, {
+    words: CONNECTION, save: () => {}, forget: () => {}, hasKey: false,
+    fieldId: 'azurekey', regionId: 'azureregion', ...props,
+  });
+  const buttons = (root: Element) => [...root.querySelectorAll('button')].filter((b) => !b.hidden).map((b) => b.textContent);
+
+  it('says it is not connected and offers one button', () => {
+    const { root, done } = connection({});
+    const box = root.querySelector('.where')!;
+    expect(box.textContent).toContain('Stimmen von Microsoft Azure · nicht verbunden');
+    expect(box.getAttribute('data-state')).toBe('off');
+    expect(buttons(root)).toEqual(['Verbinden …']);
+    done();
+  });
+
+  it('unfolds key and region together, with a cancel beside the save', () => {
+    const { root, done } = connection({});
+    root.querySelector<HTMLButtonElement>('.acts .btn')!.click();
+    flushSync();
+    expect(root.querySelector('#azurekey')).not.toBeNull();
+    expect(root.querySelector('#azureregion')).not.toBeNull();
+    expect(buttons(root)).toEqual(['Speichern', 'Abbrechen']);
+    [...root.querySelectorAll('button')].find((b) => b.textContent === 'Abbrechen')!.click();
+    flushSync();
+    expect(root.querySelector('#azurekey')).toBeNull();
+    done();
+  });
+
+  it('is connected when Azure answers, and names the region the way the host does', async () => {
+    const { root, done } = connection({
+      hasKey: true, hint: '4321', region: 'germanywestcentral',
+      regionName: (code: string) => (code === 'germanywestcentral' ? 'Frankfurt' : code),
+      probe: async () => ({ ok: true, count: 3 }),
+    });
+    await settle();
+    const box = root.querySelector('.where')!;
+    expect(box.getAttribute('data-state')).toBe('ready');
+    expect(box.classList.contains('bad')).toBe(false);
+    expect(box.textContent).toContain('Schlüssel ••••4321 · Region Frankfurt');
+    expect(buttons(root)).toEqual(['Ändern …']);
+    done();
+  });
+
+  it('is red with one primary button when Azure refuses the key', async () => {
+    const { root, done } = connection({
+      hasKey: true, hint: '4321', region: 'westeurope',
+      probe: async () => ({ ok: false, code: 'refused', words: '401' }),
+    });
+    await settle();
+    expect(root.querySelector('.where')!.classList.contains('bad')).toBe(true);
+    const only = root.querySelector<HTMLButtonElement>('.acts .btn')!;
+    expect(only.textContent).toBe('Schlüssel und Region prüfen …');
+    expect(only.classList.contains('primary')).toBe(true);
+    done();
+  });
+
+  it('folds the form away once a key is saved', async () => {
+    const save = vi.fn();
+    const { root, done } = connection({ save, probe: async () => ({ ok: true, count: 3 }) });
+    root.querySelector<HTMLButtonElement>('.acts .btn')!.click();
+    flushSync();
+    const field = root.querySelector<HTMLInputElement>('#azurekey')!;
+    field.value = 'secret';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    [...root.querySelectorAll('button')].find((b) => b.textContent === 'Speichern')!.click();
+    await settle();
+    expect(save).toHaveBeenCalledWith({ key: 'secret', region: 'westeurope' });
+    expect(root.querySelector('#azurekey')).toBeNull();
+    done();
   });
 });

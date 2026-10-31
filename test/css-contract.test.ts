@@ -40,6 +40,7 @@ import { describe, expect, it } from 'vitest';
    guard that keeps it true. */
 import { voicePicker, type Pickable } from '../dist/voice-picker.js';
 import AzurePanel from '../svelte/AzurePanel.svelte';
+import AzureConnection from '../svelte/AzureConnection.svelte';
 import PlayButton from '../svelte/PlayButton.svelte';
 import VoicePicker from '../svelte/VoicePicker.svelte';
 
@@ -155,6 +156,17 @@ const AZURE_WORDS = {
   failed: (words: string) => `Azure hat nicht geantwortet (${words}).`,
 };
 
+const CONNECTION_WORDS = {
+  ...AZURE_WORDS,
+  cancel: 'Abbrechen',
+  title: 'Stimmen von Microsoft Azure',
+  off: 'nicht verbunden', on: 'verbunden', refusedState: 'abgelehnt',
+  offNote: 'Mehr Stimmen, die natürlicher klingen.',
+  onNote: (hint: string, region: string) => `Schlüssel ••••${hint} · Region ${region}`,
+  refusedNote: 'Azure nimmt den Schlüssel nicht mehr an.',
+  connect: 'Verbinden …', change: 'Ändern …', check: 'Schlüssel und Region prüfen …',
+};
+
 describe('every class name the Svelte twins emit is drawn by components.css', () => {
   it('the picker, with the list, one chosen, two languages of voices', () => {
     drawing(VoicePicker, {
@@ -206,6 +218,22 @@ describe('every class name the Svelte twins emit is drawn by components.css', ()
       save: () => {},
       forget: () => {},
     }, (root) => expect(missingFrom(root)).toEqual([]));
+  });
+
+  /* The connection box in each of its states, and with its form unfolded. */
+  it.each([
+    ['nothing stored', { hasKey: false }],
+    ['a key Azure answers to', { hasKey: true, hint: '4321', region: 'germanywestcentral' }],
+  ] as const)('the Azure connection, %s, folded and unfolded', (_name, props) => {
+    drawing(AzureConnection, {
+      ...props, words: CONNECTION_WORDS, save: () => {}, forget: () => {},
+      probe: async () => ({ ok: false, code: 'refused', words: '401' }),
+    }, (root) => {
+      expect(missingFrom(root)).toEqual([]);
+      root.querySelector<HTMLButtonElement>('.acts .btn')!.click();
+      flushSync();
+      expect(missingFrom(root)).toEqual([]);
+    });
   });
 
   it('the play button', () => {

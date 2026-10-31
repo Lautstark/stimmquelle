@@ -531,7 +531,7 @@ has produced a third picker that looks like the other two and reads differently.
 
 ### The same list, declared — and two more pieces
 
-The `svelte/` directory ships three components as **raw `.svelte` source**,
+The `svelte/` directory ships four components as **raw `.svelte` source**,
 compiled by whichever consumer imports them. There is no build step
 here and none is coming: a `svelte` export condition is what tells
 `@sveltejs/vite-plugin-svelte` to compile them in the consumer's own pass, and
@@ -563,7 +563,16 @@ copy, which is correct in the build and half-correct in dev.
   removal is its own button. It **takes a probe** rather than owning one and
   renders what that answers, Azure's own message included; the words, the plural
   formatter and any extra notice are the product's. This is still not a key
-  store: what the panel has, it hands to `save`.
+  store: what the panel has, it hands to `save`. Pass `cancel` (and
+  `words.cancel`) for a quiet button beside the save that puts the form away.
+- **`AzureConnection`** is Azure as a connection that is either there or not:
+  design's `.where` box saying „Stimmen von Microsoft Azure · verbunden" (or
+  „nicht verbunden", or „abgelehnt" in red), and one button under it —
+  „Verbinden …", „Ändern …", „Schlüssel und Region prüfen …". The button
+  unfolds `AzurePanel` with a cancel, so key and region are entered and changed
+  together. It probes once per key and region to know which state to draw.
+  `regionName` turns a code into what a person calls it („Frankfurt"); the
+  words are the product's, as `AzurePanel`'s are.
 - **`PlayButton`** is a `▶` that speaks. `text` is a thunk so the field beside it
   is read at press time, the speech call is injected, and busy is expressed
   **only** as `disabled` — the glyph never changes, because a `▶` swapped for `…`
