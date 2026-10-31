@@ -187,6 +187,13 @@ describe('every class name the Svelte twins emit is drawn by components.css', ()
     }, (root) => expect(missingFrom(root)).toEqual([]));
   });
 
+  it('the picker folded, with the chosen voice alone', () => {
+    drawing(VoicePicker, {
+      voices: () => VOICES, current: () => 'piper:de_DE-kerstin-low', pick: () => {},
+      hear: async () => {}, folded: true,
+    }, (root) => expect(missingFrom(root)).toEqual([]));
+  });
+
   it('the picker with no voices at all', () => {
     drawing(VoicePicker, {
       voices: () => [], current: () => undefined, pick: () => {},

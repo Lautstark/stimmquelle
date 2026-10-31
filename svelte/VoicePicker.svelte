@@ -60,7 +60,7 @@
    * language control beside it, and what else a row has to say. `notes()` is the
    * hook for the last of those.
    */
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { SvelteMap } from 'svelte/reactivity';
   /* A component imports what a consumer imports: `dist`, never `../src/`.
      2.11.0 shipped these three lines reading `../src/list.js` and
@@ -99,6 +99,7 @@
     hear,
     notes,
     chosenName,
+    folded = false,
     lang = 'de',
     id,
   }: {
@@ -133,6 +134,23 @@
      */
     chosenName?: () => string;
     /**
+     * Show the chosen voice alone, with ▶ and „Andere Stimme …", until
+     * somebody wants another.
+     *
+     * A settings panel opened to change the language should not have to scroll
+     * past forty voices to get there. So with a voice chosen the list folds
+     * away, the way „Deine Daten" and the Azure connection show one box and one
+     * button. The button unfolds the search and the rows as they are without
+     * this; a row *clicked* there is a choice made, and the list folds again.
+     * The arrow keys still move the answer without folding anything, because
+     * walking a radio group with them is how a keyboard compares.
+     *
+     * With nothing chosen there is nothing to fold to, and the list is open.
+     * Off by default, so the markup without it is the vanilla twin's, node for
+     * node.
+     */
+    folded?: boolean;
+    /**
      * A value, or a function. §6.8: `lang` is a prop and reactivity is the
      * framework's, which removes the asymmetry where three panels read it per
      * paint and one resolved it once.
@@ -153,7 +171,12 @@
   /** Which language chip is pressed, if the catalogue has chips at all. */
   let chip = $state<string | null>(null);
 
-  let list: HTMLElement;
+  let list = $state<HTMLElement>();
+  let searchField = $state<HTMLInputElement>();
+  let otherButton = $state<HTMLButtonElement>();
+
+  /* Folded: whether somebody has asked for the whole list. */
+  let unfolded = $state(false);
 
   const all = $derived(voices());
   const live = $derived(current());
@@ -284,10 +307,53 @@
       : share > 0 && share < 1 ? String(Math.round(share * 100)) : '…';
   }
 
+  /* The chosen voice, as the folded box draws it: named against the whole
+     catalogue whatever is typed, and present even when it has gone. */
+  const chosen = $derived.by((): Drawn | undefined => {
+    if (!live) return undefined;
+    const voice = all.find((one) => one.id === live);
+    if (!voice) {
+      const name = chosenName?.() || live;
+      return {
+        voice: { id: live, name, locale: '', gender: '', source: 'piper', downloadBytes: 0, needsKey: false },
+        live: true, name, facts: say.gone, notes: [], canHear: false, gone: true,
+      };
+    }
+    return {
+      voice, live: true, name: labelOf(voice, all), facts: factsOf(voice, all, langNow),
+      notes: [], canHear: true, gone: false,
+    };
+  });
+  const showList = $derived(!folded || !chosen || unfolded);
+
+  async function unfold(): Promise<void> {
+    unfolded = true;
+    await tick();
+    searchField?.focus();
+  }
+
+  /** Put the list away again, the search with it, and hand focus to the
+   *  button that brings it back rather than to the page. */
+  async function fold(): Promise<void> {
+    unfolded = false;
+    typed = '';
+    chip = null;
+    await tick();
+    otherButton?.focus();
+  }
+
+  /** A row pressed — by pointer, Enter or Space. Folded, that is a choice
+   *  made, so the list goes. */
+  function choose(voiceId: string): void {
+    pick(voiceId);
+    if (folded && unfolded) void fold();
+  }
+
   /** Arrow keys move the choice, as they do in any radio group. */
   function step(event: KeyboardEvent): void {
     const keys = ['ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft', 'Home', 'End'];
     if (!keys.includes(event.key)) return;
+    if (!list) return;
     const here = [...list.querySelectorAll<HTMLElement>('.voice')];
     const at = here.indexOf(document.activeElement as HTMLElement);
     if (at < 0 || !here.length) return;
@@ -304,13 +370,30 @@
 </script>
 
 <div {id} class="voice-picker"
-  ><!-- A wrapping <label>, so the field's accessible name needs no generated id
+  >{#if !showList && chosen}<!-- Folded: the answer, and one way to another.
+        `aria-current` and not `aria-checked`, because this is no radio: it
+        reports a choice and changes nothing when pressed. -->
+  <div class="voices"
+    ><div class="voices__row"
+      >{#if hear}<button class="btn quiet voices__play" type="button"
+          title={say.hearTitle}
+          aria-label={hearing.has(chosen.voice.id) ? say.hearing(chosen.name) : say.hear(chosen.name)}
+          disabled={!chosen.canHear || hearing.has(chosen.voice.id)}
+          onclick={() => void preview(chosen.voice)}>{glyph(chosen)}</button
+        >{/if}<p class="voice" aria-current="true"
+        ><span class="voice__name">{chosen.name}</span
+        ><span class="voice__facts">{chosen.facts}</span></p
+      ></div
+    ></div
+  ><div class="acts"><button bind:this={otherButton} type="button" class="btn sm"
+      onclick={() => void unfold()}>{say.other}</button></div
+  >{:else}<!-- A wrapping <label>, so the field's accessible name needs no generated id
         and cannot come apart from it. The visible caption is a label and the
         placeholder is an example: a placeholder used as the label leaves the
         field unnamed the moment somebody types in it. -->
   <label class="voice-picker__search"
     ><span class="lbl">{say.searchLabel}</span
-    ><input class="field" type="search" autocomplete="off"
+    ><input bind:this={searchField} class="field" type="search" autocomplete="off"
       placeholder={say.searchHint} bind:value={typed} /></label
   ><!-- Drawn whether or not it holds chips: `.voice-picker__filters:empty` is
         what keeps an empty one from spending the grid gap, and it can only do
@@ -346,7 +429,7 @@
           >{/if}<button class="voice" type="button" data-id={row.voice.id}
           role="radio" aria-checked={row.live}
           tabindex={row.voice.id === entry ? 0 : -1}
-          onclick={() => pick(row.voice.id)}
+          onclick={() => choose(row.voice.id)}
           ><span class="voice__name">{row.name}</span
           ><span class="voice__facts">{row.facts}</span
           >{#each row.notes as note, index (index)}<span class="voice__hint"
@@ -354,5 +437,6 @@
             >{/each}</button
         ></div
       >{:else}<p class="voices__none">{say.noMatch}</p>{/each}</div
-  >
+  >{#if folded && chosen}<div class="acts"><button type="button" class="btn quiet sm"
+      onclick={() => void fold()}>{say.fold}</button></div>{/if}{/if}
 </div>

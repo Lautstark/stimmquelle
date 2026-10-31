@@ -312,6 +312,88 @@ const panel = (props: Record<string, unknown>) => draw(AzurePanel, {
   forgetId: 'azureforget', probeId: 'azureprobe', ...props,
 });
 
+describe('the folded picker', () => {
+  const folded = (over: Record<string, unknown> = {}) => draw(VoicePicker, {
+    voices: () => VOICES, current: () => 'piper:de_DE-kerstin-low', pick: () => {},
+    hear: async () => {}, folded: true, ...over,
+  });
+  const button = (root: Element, text: string) =>
+    [...root.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.textContent === text);
+
+  it('shows the chosen voice alone, with ▶ and one button', () => {
+    const { root, done } = folded();
+    expect(root.querySelector('input')).toBeNull();
+    expect(root.querySelector('[role="radiogroup"]')).toBeNull();
+    const chosen = root.querySelector('.voice[aria-current="true"]')!;
+    expect(chosen.querySelector('.voice__name')!.textContent).toBe('Kerstin');
+    expect(root.querySelector('.voices__play')).not.toBeNull();
+    expect(button(root, 'Andere Stimme …')).toBeDefined();
+    done();
+  });
+
+  it('is open where nothing is chosen, with nothing to fold to', () => {
+    const { root, done } = folded({ current: () => undefined });
+    expect(root.querySelector('input')).not.toBeNull();
+    expect(button(root, 'Zuklappen')).toBeUndefined();
+    done();
+  });
+
+  it('unfolds into the search, and a row clicked there folds it again', async () => {
+    const pick = vi.fn();
+    const { root, done } = folded({ pick });
+    button(root, 'Andere Stimme …')!.click();
+    await settle();
+    const field = root.querySelector('input')!;
+    expect(document.activeElement).toBe(field);
+    root.querySelector<HTMLElement>('.voice[data-id="piper:de_DE-thorsten-high"]')!.click();
+    await settle();
+    expect(pick).toHaveBeenCalledWith('piper:de_DE-thorsten-high');
+    expect(root.querySelector('input')).toBeNull();
+    expect(document.activeElement).toBe(button(root, 'Andere Stimme …'));
+    done();
+  });
+
+  it('lets the arrow keys walk the answers without folding', async () => {
+    const pick = vi.fn();
+    const { root, done } = folded({ pick });
+    button(root, 'Andere Stimme …')!.click();
+    await settle();
+    root.querySelector<HTMLElement>('.voice[aria-checked="true"]')!.focus();
+    root.querySelector('.voices')!
+      .dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await settle();
+    expect(pick).toHaveBeenCalled();
+    expect(root.querySelector('input')).not.toBeNull();
+    done();
+  });
+
+  it('folds away without a choice, and forgets what was typed', async () => {
+    const pick = vi.fn();
+    const { root, done } = folded({ pick });
+    button(root, 'Andere Stimme …')!.click();
+    await settle();
+    const field = root.querySelector('input')!;
+    field.value = 'katja';
+    field.dispatchEvent(new Event('input'));
+    button(root, 'Zuklappen')!.click();
+    await settle();
+    expect(pick).not.toHaveBeenCalled();
+    button(root, 'Andere Stimme …')!.click();
+    await settle();
+    expect(root.querySelector('input')!.value).toBe('');
+    done();
+  });
+
+  it('still shows a chosen voice that has gone', () => {
+    const { root, done } = folded({ current: () => 'azure:de-DE-GoneNeural', chosenName: () => 'Conrad' });
+    const chosen = root.querySelector('.voice[aria-current="true"]')!;
+    expect(chosen.textContent).toContain('Conrad');
+    expect(chosen.textContent).toContain('hier nicht verfügbar');
+    expect(root.querySelector<HTMLButtonElement>('.voices__play')!.disabled).toBe(true);
+    done();
+  });
+});
+
 describe('the Azure panel', () => {
   it('holds the key in the placeholder and starts empty', () => {
     const { root, done } = panel({ hasKey: true, placeholder: '••••4321' });

@@ -76,7 +76,7 @@
     "prepare": "npm run build"
   },
   "devDependencies": {
-    "@lautstark/design": "github:Lautstark/design#v1.42.0",
+    "@lautstark/design": "github:Lautstark/design#v1.43.0",
     "@semantic-release/changelog": "^7.0.0",
     "@semantic-release/exec": "^7.1.0",
     "@semantic-release/git": "^11.0.1",

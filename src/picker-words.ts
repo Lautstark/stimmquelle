@@ -69,6 +69,10 @@ export interface Words {
   hearTitle: string;
   hear: (name: string) => string;
   hearing: (name: string) => string;
+  /** Under the chosen voice while the list is folded away (`folded`). */
+  other: string;
+  /** Under the open list, to put it away again without choosing. */
+  fold: string;
 }
 
 export const WORDS: Record<PickerLang, Words> = {
@@ -96,6 +100,8 @@ export const WORDS: Record<PickerLang, Words> = {
     hearTitle: 'Probe hören',
     hear: (name) => `${name} probehören`,
     hearing: (name) => `${name} wird abgespielt`,
+    other: 'Andere Stimme …',
+    fold: 'Zuklappen',
   },
   en: {
     group: 'Voice',
@@ -112,6 +118,8 @@ export const WORDS: Record<PickerLang, Words> = {
     hearTitle: 'Listen',
     hear: (name) => `Hear ${name}`,
     hearing: (name) => `${name} is playing`,
+    other: 'Another voice …',
+    fold: 'Fold away',
   },
 };
 

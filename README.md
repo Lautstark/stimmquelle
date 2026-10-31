@@ -556,7 +556,11 @@ copy, which is correct in the build and half-correct in dev.
   a `$derived`, so a rune the host reads in either is what repaints it, and the
   host needs no `$effect` and no `dispose`. The twenty lines the vanilla version
   spends putting the keyboard back after a repaint are absent: a keyed `{#each}`
-  does not replace the rows, so focus never leaves them.
+  does not replace the rows, so focus never leaves them. Pass `folded` in a
+  settings panel: with a voice chosen it shows that voice alone, with ▶ and
+  „Andere Stimme …", and the button unfolds the search and the rows. A row
+  clicked there folds the list again; the arrow keys walk it without folding.
+  Off by default, which keeps the markup the vanilla twin's.
 - **`AzurePanel`** is the key field three products had drawn separately. The
   stored key sits in the **placeholder**, never in the value — so the field
   starts empty on every draw, an untouched field keeps the key it shows, and
