@@ -1,3 +1,9 @@
+## [2.15.0](https://github.com/Lautstark/stimmquelle/compare/v2.14.0...v2.15.0) (2026-10-31)
+
+### Features
+
+* **voice-picker:** folded — the chosen voice alone, with ▶ and „Andere Stimme …“ ([2182a71](https://github.com/Lautstark/stimmquelle/commit/2182a71b0d4b73d79dd1712303f6c3c36fe709c5))
+
 ## [2.14.0](https://github.com/Lautstark/stimmquelle/compare/v2.13.0...v2.14.0) (2026-10-31)
 
 ### Features
